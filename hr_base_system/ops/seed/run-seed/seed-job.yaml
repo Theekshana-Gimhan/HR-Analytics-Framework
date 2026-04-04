@@ -1,0 +1,31 @@
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: simpala-seed-job
+  namespace: 'long-operator-466309-g6'
+spec:
+  template:
+    spec:
+      template:
+        spec:
+          serviceAccountName: simpalahr-service-account@long-operator-466309-g6.iam.gserviceaccount.com
+          containers:
+            - name: seed
+              image: us-central1-docker.pkg.dev/long-operator-466309-g6/simpalahr/simpalahr-backend-dev:latest
+              command:
+                - npm
+                - run
+                - seed
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: dev-database-url
+                      key: latest
+              resources:
+                limits:
+                  cpu: '1'
+                  memory: 512Mi
+          vpcAccess:
+            connector: projects/long-operator-466309-g6/locations/us-central1/connectors/simpala-vpc-connector
+            egress: all-traffic

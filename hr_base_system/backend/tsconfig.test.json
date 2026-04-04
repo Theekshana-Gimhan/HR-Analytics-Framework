@@ -1,0 +1,19 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es2016",
+    "paths": {
+      "@prisma/client": [
+        "../../node_modules/@prisma/client"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "node_modules/@prisma/client/**/*.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

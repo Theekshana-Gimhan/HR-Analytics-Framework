@@ -1,0 +1,55 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Testing
+coverage
+
+# Production
+dist
+build
+
+# Misc
+.DS_Store
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs
+*.log
+
+# Debug/Output files (prevent junk accumulation)
+**/typecheck*.txt
+**/test_output*.txt
+**/test_result*.txt
+**/test_result*.json
+**/test_debug*.txt
+**/test_final*.txt
+**/trace*.txt
+**/debug_output*.txt
+**/recent_errors.json
+**/*_logs*.json
+**/ci_*.txt
+**/ci_*.json
+**/resolution.txt
+**/full_typecheck*.txt
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs
+*.njsproj
+*.sln
+*.sw?
+
+# Local Secrets
+jwt_secret.txt
+db_url.txt

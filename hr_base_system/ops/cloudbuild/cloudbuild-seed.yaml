@@ -1,0 +1,15 @@
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'build'
+      - '-f'
+      - 'Dockerfile.seed'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/long-operator-466309-g6/simpalahr/seed-basic:latest'
+      - '.'
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'us-central1-docker.pkg.dev/long-operator-466309-g6/simpalahr/seed-basic:latest'
+images:
+  - 'us-central1-docker.pkg.dev/long-operator-466309-g6/simpalahr/seed-basic:latest'

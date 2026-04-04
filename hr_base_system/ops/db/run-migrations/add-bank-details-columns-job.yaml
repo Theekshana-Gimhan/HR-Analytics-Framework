@@ -1,0 +1,52 @@
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: add-bank-details-columns
+spec:
+  template:
+    template:
+      spec:
+        vpcAccess:
+          connector: simpala-vpc-connector
+          egress: private-ranges-only
+        serviceAccountName: simpala-backend-run-sa@long-operator-466309-g6.iam.gserviceaccount.com
+        timeoutSeconds: 300
+        maxRetries: 0
+        containers:
+          - name: migrate
+            image: postgres:15
+            command: ["sh", "-c"]
+            args:
+              - |
+                set -euo pipefail
+                echo "Starting add-bank-details-columns migration"
+                
+                cat > /tmp/migration.sql <<'SQL'
+                -- Add missing bank details and employee columns
+                ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "bank_branch" TEXT;
+                ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "account_holder_name" TEXT;
+                ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "department" TEXT;
+                ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "gender" TEXT;
+                ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "allowances" DECIMAL(10, 2);
+                
+                -- Verify columns were added
+                SELECT column_name, data_type FROM information_schema.columns 
+                WHERE table_name = 'Employee' 
+                AND column_name IN ('bank_branch', 'account_holder_name', 'department', 'gender', 'allowances');
+                SQL
+                
+                echo "Running migration..."
+                PGPASSWORD="${DB_PASSWORD}" psql -h "${DB_HOST}" -U "${DB_USER}" -d "${DB_NAME}" -f /tmp/migration.sql
+                echo "Migration complete!"
+            env:
+              - name: DB_HOST
+                value: "10.50.224.3"
+              - name: DB_NAME
+                value: "simpala_hr"
+              - name: DB_USER
+                value: "postgres"
+              - name: DB_PASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: simpala-db-password
+                    key: latest

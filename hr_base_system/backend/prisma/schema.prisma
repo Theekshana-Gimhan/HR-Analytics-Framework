@@ -1,0 +1,462 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x", "debian-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Company {
+  id                 Int              @id @default(autoincrement())
+  name               String
+  address            String?
+  phone              String?
+  email              String?
+  website            String?
+  registrationNumber String?          @map("registration_number")
+  taxId              String?          @map("tax_id")
+  logoUrl            String?          @map("logo_url")
+  country            String?          @default("Sri Lanka")
+  currency           String?          @default("LKR")
+  users              User[]
+  bankFileExports    BankFileExport[]
+  leaveTypes         LeaveType[]
+
+  @@map("companies")
+}
+
+model User {
+  id                 Int                @id @default(autoincrement())
+  email              String             @unique
+  password_hash      String
+  role               Role               @default(EMPLOYEE)
+  companyId          Int                @map("company_id")
+  employee           Employee?
+  company            Company            @relation(fields: [companyId], references: [id])
+  refreshTokens      RefreshToken[]
+  uploadedDocuments  EmployeeDocument[] @relation("DocumentUploadedBy")
+  generatedBankFiles BankFileExport[]   @relation("BankFileGeneratedBy")
+  authenticators     Authenticator[]
+  isActive           Boolean            @default(true) @map("is_active")
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+model Employee {
+  id                  Int                    @id @default(autoincrement())
+  userId              Int                    @unique
+  first_name          String
+  last_name           String
+  nic                 String                 @unique
+  job_title           String
+  salary              Decimal                @db.Decimal(10, 2)
+  bank_details        String
+  bank_name           String?
+  bank_branch         String?
+  bank_code           String?
+  branch_code         String?
+  account_number      String?
+  account_holder_name String?
+  department          String?
+  gender              String?
+  allowances          Decimal?               @db.Decimal(10, 2)
+  isActive            Boolean                @default(true) @map("is_active")
+  deletedAt           DateTime?              @map("deleted_at")
+  employmentStatus    EmploymentStatus       @default(ACTIVE) @map("employment_status")
+  date_of_birth               DateTime?
+  phone_number                String?
+  address                     String?
+  emergency_contact_name      String?
+  emergency_contact_phone     String?
+  attendance          AttendanceRecord[]
+  correctionRequests  AttendanceCorrectionRequest[]
+  user                User                   @relation(fields: [userId], references: [id])
+  leave_requests      LeaveRequest[]
+  payslips            Payslip[]
+  employmentStartDate DateTime               @default(now()) @map("employment_start_date")
+  leaveBalances       EmployeeLeaveBalance[]
+  documents           EmployeeDocument[]
+  employeeShifts      EmployeeShift[]
+  expiryDocuments     ExpiryDocument[]
+
+  @@index([isActive])
+  @@index([deletedAt])
+}
+
+model LeaveType {
+  id                  Int                    @id @default(autoincrement())
+  companyId           Int                    @map("company_id")
+  company             Company                @relation(fields: [companyId], references: [id])
+  name                String
+  defaultBalance      Decimal                @map("default_balance") @db.Decimal(10, 2)
+  leave_requests      LeaveRequest[]
+  requiresAnniversary Boolean                @default(false) @map("requires_anniversary")
+  leaveBalances       EmployeeLeaveBalance[]
+}
+
+model LeaveRequest {
+  id                  Int                       @id @default(autoincrement())
+  employeeId          Int
+  leaveTypeId         Int
+  start_date          DateTime
+  end_date            DateTime
+  status              LeaveStatus               @default(PENDING)
+  employee            Employee                  @relation(fields: [employeeId], references: [id])
+  leave_type          LeaveType                 @relation(fields: [leaveTypeId], references: [id])
+  totalDays           Decimal?                  @map("total_days")
+  balanceTransactions LeaveBalanceTransaction[]
+}
+
+model AttendanceRecord {
+  id           Int              @id @default(autoincrement())
+  employeeId   Int
+  date         DateTime
+  status       AttendanceStatus
+  checkInTime  DateTime?
+  checkOutTime DateTime?
+  createdAt    DateTime         @default(now())
+  employee     Employee         @relation(fields: [employeeId], references: [id])
+  correctionRequests AttendanceCorrectionRequest[]
+}
+
+model AttendanceCorrectionRequest {
+  id               Int              @id @default(autoincrement())
+  employeeId       Int
+  attendanceId     Int?
+  date             DateTime
+  requestedStatus  AttendanceStatus
+  reason           String
+  adminNotes       String?          @map("admin_notes")
+  status           CorrectionStatus @default(PENDING)
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  employee         Employee         @relation(fields: [employeeId], references: [id])
+  attendance       AttendanceRecord? @relation(fields: [attendanceId], references: [id])
+}
+
+model Payslip {
+  id           Int      @id @default(autoincrement())
+  employeeId   Int
+  month        Int
+  year         Int
+  gross_pay    Decimal  @db.Decimal(10, 2)
+  epf_employee Decimal  @db.Decimal(10, 2)
+  epf_employer Decimal  @db.Decimal(10, 2)
+  etf          Decimal  @db.Decimal(10, 2)
+  paye         Decimal  @db.Decimal(10, 2)
+  net_pay      Decimal  @db.Decimal(10, 2)
+  allowances   Decimal  @default(0) @db.Decimal(10, 2)
+  basic_salary Decimal  @default(0) @db.Decimal(10, 2)
+  employee     Employee @relation(fields: [employeeId], references: [id])
+
+  @@unique([employeeId, month, year])
+}
+
+model EmployeeLeaveBalance {
+  id             Int                       @id @default(autoincrement())
+  employeeId     Int
+  leaveTypeId    Int
+  accrued        Decimal                   @default(0)
+  used           Decimal                   @default(0)
+  carriedForward Decimal                   @default(0)
+  lastAccruedAt  DateTime?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  employee       Employee                  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType      LeaveType                 @relation(fields: [leaveTypeId], references: [id], onDelete: Cascade)
+  transactions   LeaveBalanceTransaction[]
+
+  @@unique([employeeId, leaveTypeId])
+}
+
+model LeaveBalanceTransaction {
+  id             Int                  @id @default(autoincrement())
+  leaveBalanceId Int
+  leaveRequestId Int?
+  change         Decimal
+  balanceAfter   Decimal
+  reason         LeaveBalanceReason
+  note           String?
+  createdAt      DateTime             @default(now())
+  leaveBalance   EmployeeLeaveBalance @relation(fields: [leaveBalanceId], references: [id], onDelete: Cascade)
+  leaveRequest   LeaveRequest?        @relation(fields: [leaveRequestId], references: [id])
+}
+
+model EmployeeDocument {
+  id              Int               @id @default(autoincrement())
+  employeeId      Int
+  originalName    String
+  storedName      String
+  mimeType        String
+  size            Int
+  storageProvider String
+  storagePath     String
+  uploadedBy      Int
+  category        DocumentCategory? @default(OTHER)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  employee        Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  uploadedByUser  User             @relation("DocumentUploadedBy", fields: [uploadedBy], references: [id])
+  expiryDocuments ExpiryDocument[]
+
+  @@index([employeeId])
+  @@index([uploadedBy])
+}
+
+enum DocumentCategory {
+  MEDICAL_REPORT
+  EPF_FORM
+  POLICE_REPORT
+  CONTRACT
+  IDENTIFICATION
+  OTHER
+}
+
+model BankFileExport {
+  id           Int          @id @default(autoincrement())
+  companyId    Int          @map("company_id")
+  bankCode     String
+  fileType     BankFileType
+  month        Int
+  year         Int
+  totalRecords Int
+  totalAmount  Decimal      @default(0) @db.Decimal(10, 2)
+  generatedAt  DateTime     @default(now())
+  generatedBy  Int?
+  checksum     String?
+  fileName     String
+  storagePath  String?
+
+  company         Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  generatedByUser User?   @relation("BankFileGeneratedBy", fields: [generatedBy], references: [id])
+
+  @@index([companyId, year, month])
+  @@index([bankCode])
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  EMPLOYEE
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  HALF_DAY
+  WFH
+  ON_LEAVE
+}
+
+enum CorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum LeaveBalanceReason {
+  ACCRUAL
+  USAGE
+  ADJUSTMENT
+  REVERSAL
+}
+
+enum BankFileType {
+  CIPS
+  SLIPS
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  PROBATION
+  NOTICE_PERIOD
+  TERMINATED
+  RESIGNED
+}
+
+// =============================================
+// Audit Trail (F21)
+// =============================================
+
+/// Tracks all significant user actions for HR compliance and security auditing.
+model AuditLog {
+  id          Int       @id @default(autoincrement())
+  userId      Int       @map("user_id")
+  companyId   Int       @map("company_id")
+  action      String    // e.g., "LEAVE_APPROVED", "PAYROLL_RUN", "EMPLOYEE_UPDATED"
+  entityType  String    @map("entity_type") // e.g., "LeaveRequest", "Payslip", "Employee"
+  entityId    Int?      @map("entity_id") // ID of the affected record
+  details     Json?     // Optional JSON payload with before/after or metadata
+  ipAddress   String?   @map("ip_address")
+  userAgent   String?   @map("user_agent")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([companyId, createdAt])
+  @@index([entityType, entityId])
+  @@index([action])
+  @@map("audit_logs")
+}
+
+// =============================================
+// M1.5.1 - Roster Management Models
+// =============================================
+
+/// Template for recurring shift patterns
+model ShiftTemplate {
+  id            Int      @id @default(autoincrement())
+  companyId     Int      @map("company_id")
+  name          String // e.g., "Morning Shift", "Night Shift"
+  startTime     String // e.g., "09:00" (HH:mm format)
+  endTime       String // e.g., "17:00"
+  breakDuration Int      @default(60) @map("break_duration_minutes") // in minutes
+  color         String? // Hex color for UI display
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  employeeShifts EmployeeShift[]
+
+  @@index([companyId, isActive])
+  @@map("shift_templates")
+}
+
+/// Assignment of an employee to a specific shift on a specific date
+model EmployeeShift {
+  id              Int         @id @default(autoincrement())
+  employeeId      Int         @map("employee_id")
+  shiftTemplateId Int         @map("shift_template_id")
+  date            DateTime    @db.Date
+  status          ShiftStatus @default(SCHEDULED)
+  notes           String?
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  employee      Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shiftTemplate ShiftTemplate @relation(fields: [shiftTemplateId], references: [id])
+
+  @@unique([employeeId, date])
+  @@index([date])
+  @@index([shiftTemplateId])
+  @@map("employee_shifts")
+}
+
+enum ShiftStatus {
+  SCHEDULED
+  COMPLETED
+  ABSENT
+  CANCELLED
+}
+
+/// Tracks documents with expiry dates (e.g., licenses, certifications)
+model ExpiryDocument {
+  id              Int                  @id @default(autoincrement())
+  employeeId      Int                  @map("employee_id")
+  documentId      Int?                 @map("document_id") // Optional link to uploaded file
+  documentType    ExpiryDocumentType
+  name            String // e.g., "Driver License", "First Aid Certificate"
+  issueDate       DateTime?            @map("issue_date") @db.Date
+  expiryDate      DateTime             @map("expiry_date") @db.Date
+  alertDaysBefore Int                  @default(30) @map("alert_days_before")
+  status          ExpiryDocumentStatus @default(VALID)
+  notes           String?
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
+
+  employee Employee          @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  document EmployeeDocument? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@index([employeeId])
+  @@index([expiryDate])
+  @@index([status])
+  @@map("expiry_documents")
+}
+
+enum ExpiryDocumentType {
+  LICENSE
+  CERTIFICATION
+  VISA
+  WORK_PERMIT
+  MEDICAL_CERTIFICATE
+  BACKGROUND_CHECK
+  OTHER
+}
+
+enum ExpiryDocumentStatus {
+  VALID
+  EXPIRING_SOON
+  EXPIRED
+  RENEWED
+}
+
+// =============================================
+// M1.5.2 - WebAuthn (Passkey/Biometric) Models
+// =============================================
+
+/// Stores registered WebAuthn authenticators (passkeys) for users
+model Authenticator {
+  id                   Int       @id @default(autoincrement())
+  userId               Int       @map("user_id")
+  credentialId         Bytes     @unique @map("credential_id") // Base64URL encoded in API
+  credentialPublicKey  Bytes     @map("credential_public_key")
+  counter              BigInt    @default(0)
+  credentialDeviceType String    @map("credential_device_type") // "singleDevice" or "multiDevice"
+  credentialBackedUp   Boolean   @map("credential_backed_up")
+  transports           String[] // e.g., ["internal", "hybrid"]
+  aaguid               String? // Authenticator attestation GUID
+  friendlyName         String?   @map("friendly_name") // User-provided name
+  createdAt            DateTime  @default(now()) @map("created_at")
+  lastUsedAt           DateTime? @map("last_used_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("authenticators")
+}
+
+/// Temporary storage for WebAuthn challenges during registration/authentication
+model WebAuthnChallenge {
+  id        Int      @id @default(autoincrement())
+  challenge String   @unique
+  userId    Int?     @map("user_id") // Null for authentication (discovery)
+  type      String // "registration" or "authentication"
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("webauthn_challenges")
+}

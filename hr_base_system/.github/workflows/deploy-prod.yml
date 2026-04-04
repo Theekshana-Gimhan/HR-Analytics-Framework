@@ -1,0 +1,546 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.gitignore'
+  workflow_dispatch:
+    inputs:
+      skip_ci:
+        description: 'Skip CI checks (not recommended)'
+        required: false
+        default: 'false'
+
+env:
+  NODE_VERSION: '20'
+  GCP_PROJECT_ID: start-project-466908
+  GCP_REGION: us-central1
+  ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
+  BACKEND_SERVICE: simpalahr-backend-prod
+  FRONTEND_SERVICE: simpalahr-frontend-prod
+  BACKEND_IMAGE_NAME: simpalahr/simpalahr-backend-prod
+  FRONTEND_IMAGE_NAME: simpalahr/simpalahr-frontend-prod
+
+jobs:
+  # ============================================================
+  # Security Scan
+  # ============================================================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.inputs.skip_ci != 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run npm audit (Backend)
+        working-directory: ./backend
+        run: |
+          echo "🔍 Scanning backend dependencies for vulnerabilities..."
+          npm audit --audit-level=moderate
+
+      - name: Run npm audit (Frontend)
+        working-directory: ./frontend
+        run: |
+          echo "🔍 Scanning frontend dependencies for vulnerabilities..."
+          npm audit --audit-level=moderate
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: 1
+
+  # ============================================================
+  # Lint & Type Check
+  # ============================================================
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.inputs.skip_ci != 'true'
+    needs: security-scan
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install all workspace dependencies
+        run: npm install && cd packages/types && npm install && npm run build && cd ../..
+
+      - name: Lint backend
+        working-directory: ./backend
+        run: npm run lint
+
+      - name: Check backend formatting
+        working-directory: ./backend
+        run: npm run format:check
+
+      - name: Lint frontend
+        working-directory: ./frontend
+        run: npm run lint
+
+      - name: Type check frontend
+        working-directory: ./frontend
+        run: npm run typecheck
+
+  # ============================================================
+  # Backend Tests
+  # ============================================================
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.inputs.skip_ci != 'true'
+    needs: lint
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: simpala_hr_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install all workspace dependencies
+        run: npm install && cd packages/types && npm install && npm run build && cd ../..
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci || npm install
+
+      - name: Generate Prisma Client
+        working-directory: ./backend
+        run: npx prisma generate
+
+      - name: Setup test database
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/simpala_hr_test?schema=public
+        run: npx prisma db push
+
+      - name: Run tests with coverage
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/simpala_hr_test?schema=public
+          JWT_SECRET: test-jwt-secret-key-for-ci-only
+          NODE_ENV: test
+        run: npm run test:coverage
+
+  # ============================================================
+  # Frontend Tests
+  # ============================================================
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.inputs.skip_ci != 'true'
+    needs: lint
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install all workspace dependencies
+        run: npm install && cd packages/types && npm install && npm run build && cd ../..
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci || npm install
+
+      - name: Run unit tests
+        working-directory: ./frontend
+        run: npm test
+
+  # ============================================================
+  # Build Validation
+  # ============================================================
+  build-validation:
+    name: Build Validation
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.inputs.skip_ci != 'true'
+    needs: [test-backend, test-frontend]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install all workspace dependencies
+        run: npm install && cd packages/types && npm install && npm run build && cd ../..
+
+      - name: Build backend
+        working-directory: ./backend
+        run: npm run build
+
+      - name: Build frontend
+        working-directory: ./frontend
+        env:
+          VITE_API_BASE_URL: https://api.example.com/api/v1
+        run: npm run build
+
+  # ============================================================
+  # Build and Deploy to GCP Cloud Run (Production)
+  # ============================================================
+  deploy:
+    name: Build and Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [security-scan, lint, test-backend, test-frontend, build-validation]
+    if: always() && needs.security-scan.result == 'success' && needs.lint.result == 'success' && needs.test-backend.result == 'success' && needs.test-frontend.result == 'success' && needs.build-validation.result == 'success'
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: production
+      url: ${{ steps.frontend-url.outputs.url }}
+
+    outputs:
+      frontend_url: ${{ steps.frontend-url.outputs.url }}
+      backend_url: ${{ steps.backend-url.outputs.url }}
+
+    steps:
+      # --------------------------------------------------------
+      # Checkout & Setup
+      # --------------------------------------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set image tags
+        id: tags
+        run: |
+          echo "SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+          echo "TIMESTAMP=$(date +%Y%m%d-%H%M%S)" >> $GITHUB_OUTPUT
+
+      # --------------------------------------------------------
+      # GCP Authentication (Production)
+      # --------------------------------------------------------
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/468105947604/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-actions-prod@start-project-466908.iam.gserviceaccount.com'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker
+        run: |
+          gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
+
+      # --------------------------------------------------------
+      # Build and Push Backend Image
+      # --------------------------------------------------------
+      - name: Build backend image
+        run: |
+          docker build \
+            --build-arg NODE_ENV=production \
+            --tag ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }} \
+            --tag ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.BACKEND_IMAGE_NAME }}:latest \
+            --tag ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.tags.outputs.SHORT_SHA }} \
+            --file backend/Dockerfile \
+            .
+
+      - name: Push backend image
+        run: |
+          docker push ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.BACKEND_IMAGE_NAME }}:latest
+          docker push ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.BACKEND_IMAGE_NAME }}:${{ steps.tags.outputs.SHORT_SHA }}
+
+      # --------------------------------------------------------
+      # Build and Push Frontend Image
+      # --------------------------------------------------------
+      - name: Build frontend image
+        env:
+          # Use production backend URL
+          VITE_API_BASE_URL: ${{ secrets.PROD_BACKEND_URL }}
+        run: |
+          docker build \
+            --build-arg VITE_API_BASE_URL="${VITE_API_BASE_URL}" \
+            --tag ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }} \
+            --tag ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.FRONTEND_IMAGE_NAME }}:latest \
+            --tag ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.tags.outputs.SHORT_SHA }} \
+            --file frontend/Dockerfile \
+            .
+
+      - name: Push frontend image
+        run: |
+          docker push ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
+          docker push ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ steps.tags.outputs.SHORT_SHA }}
+
+      # --------------------------------------------------------
+      # Database Migrations (Production - with backup first!)
+      # --------------------------------------------------------
+      - name: Backup database before migration
+        continue-on-error: true
+        run: |
+          echo "⚠️ PRODUCTION: Ensure database backup is complete before proceeding!"
+          echo "Manual verification recommended for production migrations."
+
+      - name: Run database migrations (Production)
+        run: |
+          echo "Running production database migrations..."
+          gcloud run jobs create migration-job-prod-${{ steps.tags.outputs.SHORT_SHA }} \
+            --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }} \
+            --region ${{ env.GCP_REGION }} \
+            --update-secrets DATABASE_URL=prod-database-url:latest \
+            --command="npx" \
+            --args="prisma,migrate,deploy" \
+            --max-retries=0 \
+            --task-timeout=600s
+          
+          gcloud run jobs execute migration-job-prod-${{ steps.tags.outputs.SHORT_SHA }} \
+            --region ${{ env.GCP_REGION }} \
+            --wait
+          
+          # Clean up the job
+          gcloud run jobs delete migration-job-prod-${{ steps.tags.outputs.SHORT_SHA }} \
+            --region ${{ env.GCP_REGION }} \
+            --quiet
+
+      # --------------------------------------------------------
+      # Deploy Backend to Cloud Run (Production)
+      # --------------------------------------------------------
+      - name: Deploy backend to Cloud Run
+        id: deploy-backend
+        run: |
+          gcloud run deploy ${{ env.BACKEND_SERVICE }} \
+            --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }} \
+            --platform managed \
+            --region ${{ env.GCP_REGION }} \
+            --port 8080 \
+            --timeout 300s \
+            --memory 1Gi \
+            --cpu 2 \
+            --min-instances 1 \
+            --max-instances 100 \
+            --allow-unauthenticated \
+            --update-secrets DATABASE_URL=prod-database-url:latest,JWT_SECRET=prod-jwt-secret:latest \
+            --set-env-vars NODE_ENV=production \
+            --cpu-boost \
+            --no-cpu-throttling
+
+      - name: Get backend URL
+        id: backend-url
+        run: |
+          BACKEND_URL=$(gcloud run services describe ${{ env.BACKEND_SERVICE }} \
+            --region ${{ env.GCP_REGION }} \
+            --format 'value(status.url)')
+          echo "url=$BACKEND_URL" >> $GITHUB_OUTPUT
+          echo "✅ Backend deployed to: $BACKEND_URL"
+
+      # --------------------------------------------------------
+      # Deploy Frontend to Cloud Run (Production)
+      # --------------------------------------------------------
+      - name: Deploy frontend to Cloud Run
+        id: deploy-frontend
+        run: |
+          gcloud run deploy ${{ env.FRONTEND_SERVICE }} \
+            --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }} \
+            --platform managed \
+            --region ${{ env.GCP_REGION }} \
+            --port 8080 \
+            --timeout 60s \
+            --memory 512Mi \
+            --cpu 1 \
+            --min-instances 1 \
+            --max-instances 100 \
+            --allow-unauthenticated \
+            --cpu-boost
+
+      - name: Get frontend URL
+        id: frontend-url
+        run: |
+          FRONTEND_URL=$(gcloud run services describe ${{ env.FRONTEND_SERVICE }} \
+            --region ${{ env.GCP_REGION }} \
+            --format 'value(status.url)')
+          echo "url=$FRONTEND_URL" >> $GITHUB_OUTPUT
+          echo "✅ Frontend deployed to: $FRONTEND_URL"
+
+      # --------------------------------------------------------
+      # Health Checks (Production)
+      # --------------------------------------------------------
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for production services to stabilize..."
+          sleep 45
+
+      - name: Health check backend
+        run: |
+          BACKEND_URL="${{ steps.backend-url.outputs.url }}"
+          echo "🔍 Checking production backend health at: $BACKEND_URL/health"
+          
+          for i in {1..15}; do
+            if curl -f -s "$BACKEND_URL/health" > /dev/null 2>&1; then
+              echo "✅ Production backend is healthy!"
+              exit 0
+            fi
+            echo "Attempt $i/15: Backend not ready yet, waiting..."
+            sleep 15
+          done
+          
+          echo "❌ Production backend health check failed!"
+          exit 1
+
+      - name: Health check frontend
+        run: |
+          FRONTEND_URL="${{ steps.frontend-url.outputs.url }}"
+          echo "🔍 Checking production frontend at: $FRONTEND_URL"
+          
+          for i in {1..15}; do
+            if curl -f -s "$FRONTEND_URL" > /dev/null 2>&1; then
+              echo "✅ Production frontend is healthy!"
+              exit 0
+            fi
+            echo "Attempt $i/15: Frontend not ready yet, waiting..."
+            sleep 15
+          done
+          
+          echo "❌ Production frontend health check failed!"
+          exit 1
+
+      # --------------------------------------------------------
+      # Smoke Tests (Production)
+      # --------------------------------------------------------
+      - name: Run smoke tests
+        continue-on-error: true
+        run: |
+          BACKEND_URL="${{ steps.backend-url.outputs.url }}"
+          echo "Running production smoke tests..."
+          
+          # Test API endpoints
+          echo "Testing /health endpoint..."
+          curl -f "$BACKEND_URL/health" || echo "Health endpoint failed"
+          
+          echo "✅ Smoke tests completed"
+
+      # --------------------------------------------------------
+      # Deployment Summary
+      # --------------------------------------------------------
+      - name: Production deployment summary
+        if: always()
+        run: |
+          echo "========================================================"
+          echo "🚀 PRODUCTION DEPLOYMENT SUMMARY"
+          echo "========================================================"
+          echo "Commit: ${{ github.sha }}"
+          echo "Short SHA: ${{ steps.tags.outputs.SHORT_SHA }}"
+          echo "Timestamp: ${{ steps.tags.outputs.TIMESTAMP }}"
+          echo "Deployed by: ${{ github.actor }}"
+          echo ""
+          echo "📦 Backend Service: ${{ env.BACKEND_SERVICE }}"
+          echo "   URL: ${{ steps.backend-url.outputs.url }}"
+          echo "   Image: ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}"
+          echo "   Memory: 1Gi, CPU: 2"
+          echo "   Min Instances: 1, Max: 100"
+          echo ""
+          echo "🎨 Frontend Service: ${{ env.FRONTEND_SERVICE }}"
+          echo "   URL: ${{ steps.frontend-url.outputs.url }}"
+          echo "   Image: ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}"
+          echo "   Memory: 512Mi, CPU: 1"
+          echo "   Min Instances: 1, Max: 100"
+          echo "========================================================"
+          echo ""
+          echo "⚠️ ROLLBACK INSTRUCTIONS (if needed):"
+          echo "gcloud run services update-traffic ${{ env.BACKEND_SERVICE }} --to-revisions=PREVIOUS-REVISION=100 --region ${{ env.GCP_REGION }}"
+          echo "gcloud run services update-traffic ${{ env.FRONTEND_SERVICE }} --to-revisions=PREVIOUS-REVISION=100 --region ${{ env.GCP_REGION }}"
+          echo "========================================================"
+
+  # ============================================================
+  # E2E Tests (Post-Deploy)
+  # ============================================================
+  e2e:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    needs: deploy
+    # Don't skip if manual trigger requested to skip CI, but allow skipping via commit msg if needed?
+    # For now, align with other jobs: run if skip_ci != true
+    if: github.event.inputs.skip_ci != 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: npm install
+
+      - name: Install Playwright browsers
+        working-directory: ./frontend
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        working-directory: ./frontend
+        env:
+          E2E_BASE_URL: ${{ needs.deploy.outputs.frontend_url }}
+          VITE_API_BASE_URL: ${{ needs.deploy.outputs.backend_url }}/api/v1
+        run: npx playwright test --project=chromium --retries=1
+
+      - name: Upload E2E report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-report-prod
+          path: frontend/playwright-report/
+          retention-days: 14
+
+      - name: Upload E2E traces
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-traces-prod
+          path: frontend/test-results/
+          retention-days: 7

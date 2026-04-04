@@ -1,0 +1,36 @@
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: dbg-psql-inspect
+spec:
+  template:
+    template:
+      spec:
+        containers:
+          - name: inspector
+            image: postgres:15
+            command: ["sh", "-c"]
+            args:
+              - |
+                set -euo pipefail
+                echo "Running DB inspection..."
+                echo "-- COLUMNS --"
+                psql "$DATABASE_URL" -c "SELECT table_name, column_name, data_type, is_nullable FROM information_schema.columns WHERE table_schema='public' AND (table_name='User' OR table_name='user') ORDER BY table_name, column_name;"
+                echo "-- FK CONSTRAINTS (pg_constraint containing companyid) --"
+                psql "$DATABASE_URL" -c "SELECT conname, pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE pg_get_constraintdef(oid) ILIKE '%companyid%';"
+                echo "-- SAMPLE USERS --"
+                psql "$DATABASE_URL" -c "SELECT id, email, role, companyId FROM \"User\" ORDER BY id DESC LIMIT 20;"
+                echo "-- SAMPLE COMPANIES --"
+                psql "$DATABASE_URL" -c "SELECT id, name FROM \"Company\" ORDER BY id DESC LIMIT 20;"
+        vpcAccess:
+          connector: simpala-vpc-connector
+          egress: private-ranges-only
+        serviceAccountName: simpala-backend-run-sa@long-operator-466309-g6.iam.gserviceaccount.com
+        timeoutSeconds: 600
+        maxRetries: 0
+        # Expose the DB URL from Secret Manager to the job
+        # Cloud Run Job will map this secret to the container env var
+        # using `valueFrom.secretKeyRef` when applying the Job API; when using
+        # gcloud to create this job, the CLI will automatically wire the secret
+        # if the secret name matches. If not, run the job with --set-secrets.
+        # (We will attach the secret at create/execute time if needed.)

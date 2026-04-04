@@ -1,0 +1,88 @@
+# Dependencies
+node_modules/
+**/node_modules/
+npm-debug.log
+yarn-error.log
+yarn.lock
+.npm
+.yarn
+package-lock.json
+**/package-lock.json
+
+# Build outputs (only in root - not in Docker build stages)
+# Note: Don't use **/ pattern to allow build artifacts from Docker build stages
+
+# Testing
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+.playwright/
+
+# IDE / Editor
+.vscode/
+.idea/
+.DS_Store
+*.swp
+*.swo
+*~
+.history/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.circleci/
+
+# Documentation (keep essential ones)
+docs/
+CHANGELOG.md
+
+# Environment & Config (keep these out of images)
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+*.bak
+
+# Docker
+docker-compose*.yml
+
+# Terraform & Infrastructure
+terraform/
+*.tfstate
+*.tfvars
+.terraform/
+
+# Deployment scripts
+deploy*
+cloudbuild*.yaml
+*.ps1
+*.sh
+
+# Test files
+**/__tests__/
+**/*.test.ts
+**/*.test.js
+**/*.spec.ts
+**/*.spec.js
+tests/
+test/
+
+# Misc
+.cache/
+tmp/
+temp/
+.tmp/
+.temp/

@@ -1,0 +1,34 @@
+steps:
+  # Check for users in database
+  - name: 'gcr.io/$PROJECT_ID/simpalahr-backend'
+    dir: '/app'
+    entrypoint: 'node'
+    args: 
+      - '-e'
+      - |
+        const {PrismaClient} = require('@prisma/client');
+        const prisma = new PrismaClient();
+        (async () => {
+          try {
+            const users = await prisma.user.findMany({select: {id:true, email:true, role:true}});
+            console.log(`Found ${users.length} users:`);
+            users.forEach(u => console.log(`  - ${u.email} (${u.role})`));
+            if (users.length === 0) {
+              console.log('No users found. Database needs seeding.');
+              console.log('Default: owner@simpala.lk, admin@simpala.lk, hr@simpala.lk');
+              console.log('Password: password123');
+            }
+            await prisma.$disconnect();
+          } catch(e) {
+            console.error(e);
+            process.exit(1);
+          }
+        })();
+    secretEnv: ['DATABASE_URL']
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/long-operator-466309-g6/secrets/DEV_DATABASE_URL/versions/latest
+      env: 'DATABASE_URL'
+
+timeout: '300s'

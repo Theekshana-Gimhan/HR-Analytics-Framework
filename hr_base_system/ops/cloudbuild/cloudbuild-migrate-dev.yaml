@@ -1,0 +1,31 @@
+steps:
+  # Build the migration runner image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-f'
+      - 'ops/migrate-runner/Dockerfile'
+      - '-t'
+      - 'migrate-runner:latest'
+      - '.'
+
+  # Run prisma migrate deploy against dev database
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        docker run --rm \
+          --network=cloudbuild \
+          -e DATABASE_URL=$$DATABASE_URL \
+          migrate-runner:latest
+    secretEnv: ['DATABASE_URL']
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/long-operator-466309-g6/secrets/DATABASE_URL/versions/latest
+      env: 'DATABASE_URL'
+
+# VPC connector for accessing Cloud SQL private IP
+options:
+  workerPool: 'projects/long-operator-466309-g6/locations/us-central1/workerPools/vpc-worker-pool'

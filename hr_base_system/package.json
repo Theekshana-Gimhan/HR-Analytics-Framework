@@ -1,0 +1,21 @@
+{
+  "name": "simpala-hr-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npm run build -w packages/types && npm run build -w backend && npm run build -w frontend"
+  },
+  "workspaces": [
+    "backend",
+    "frontend",
+    "packages/types"
+  ],
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@prisma/client": "^6.19.0"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.3"
+  }
+}

@@ -1,0 +1,82 @@
+### Simpala HR - Backend Smoke Tests
+### Usage: Install 'REST Client' extension in VS Code and click "Send Request"
+
+@baseUrl = https://simpalahr-backend-dev-wxbl5wur4q-uc.a.run.app/api/v1
+# @baseUrl = http://localhost:3001/api/v1
+
+### 1. Health Check
+# Health check is at root, not under /api/v1
+GET https://simpalahr-backend-dev-wxbl5wur4q-uc.a.run.app/health
+Content-Type: application/json
+
+> {%
+    client.test("Health Check Passed", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+    });
+%}
+
+### 2. Login (Owner)
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+    "email": "owner@simpala.lk",
+    "password": "password123"
+}
+
+> {%
+    client.test("Login Successful", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.body.hasOwnProperty("accessToken"), "Missing accessToken");
+        client.global.set("authToken", response.body.accessToken);
+    });
+%}
+
+### 3. Save Token
+# Token is auto-saved in the previous step using client.global.set
+
+### 4. Get Current User Profile
+GET {{baseUrl}}/auth/me
+Authorization: Bearer {{authToken}}
+
+> {%
+    client.test("Profile Fetched", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.body.hasOwnProperty("email"), "Missing email in profile");
+    });
+%}
+
+### 5. List Employees
+GET {{baseUrl}}/employees?page=1&limit=10
+Authorization: Bearer {{authToken}}
+
+> {%
+    client.test("Employees Listed", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(response.body.hasOwnProperty("data"), "Missing data array");
+        client.assert(response.body.hasOwnProperty("pagination"), "Missing pagination");
+    });
+%}
+
+### 6. Get Leave Types
+GET {{baseUrl}}/leave/types
+Authorization: Bearer {{authToken}}
+
+> {%
+    client.test("Leave Types Fetched", function() {
+        client.assert(response.status === 200, "Response status is not 200");
+        client.assert(Array.isArray(response.body), "Response is not an array");
+    });
+%}
+
+### 7. Get My Leave Balances
+# Replace :id with actual employee ID from Step 5 if needed, 
+# or use the logged-in user's employee ID if available
+GET {{baseUrl}}/leave/balance/my
+Authorization: Bearer {{authToken}}
+
+### 8. Logout
+POST {{baseUrl}}/auth/logout
+Authorization: Bearer {{authToken}}
+

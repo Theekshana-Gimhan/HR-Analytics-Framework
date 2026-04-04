@@ -1,0 +1,31 @@
+steps:
+  # Build the seed image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: 
+      - 'build'
+      - '-f'
+      - 'Dockerfile.seed-dev'
+      - '-t'
+      - 'us-central1-docker.pkg.dev/long-operator-466309-g6/simpalahr/seed-dev:latest'
+      - '.'
+  
+  # Run the seed container with Cloud SQL connection
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        docker run --rm \
+          --network=cloudbuild \
+          -e DATABASE_URL=$$DATABASE_URL \
+          us-central1-docker.pkg.dev/long-operator-466309-g6/simpalahr/seed-dev:latest
+    secretEnv: ['DATABASE_URL']
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/long-operator-466309-g6/secrets/DATABASE_URL/versions/latest
+      env: 'DATABASE_URL'
+
+# VPC connector for accessing Cloud SQL private IP
+options:
+  workerPool: 'projects/long-operator-466309-g6/locations/us-central1/workerPools/vpc-worker-pool'

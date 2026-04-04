@@ -1,0 +1,15 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - backend/Dockerfile
+      - -t
+      - us-central1-docker.pkg.dev/long-operator-466309-g6/simpalahr/simpalahr-backend-dev:latest
+      - .
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - us-central1-docker.pkg.dev/long-operator-466309-g6/simpalahr/simpalahr-backend-dev:latest
+images:
+  - us-central1-docker.pkg.dev/long-operator-466309-g6/simpalahr/simpalahr-backend-dev:latest

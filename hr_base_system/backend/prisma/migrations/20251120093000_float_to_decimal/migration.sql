@@ -1,0 +1,13 @@
+-- AlterTable
+ALTER TABLE "Employee" ALTER COLUMN "salary" TYPE DECIMAL(10,2);
+
+-- AlterTable
+ALTER TABLE "LeaveType" ALTER COLUMN "default_balance" TYPE DECIMAL(10,2);
+
+-- AlterTable
+ALTER TABLE "Payslip" ALTER COLUMN "gross_pay" TYPE DECIMAL(10,2);
+ALTER TABLE "Payslip" ALTER COLUMN "epf_employee" TYPE DECIMAL(10,2);
+ALTER TABLE "Payslip" ALTER COLUMN "epf_employer" TYPE DECIMAL(10,2);
+ALTER TABLE "Payslip" ALTER COLUMN "etf" TYPE DECIMAL(10,2);
+ALTER TABLE "Payslip" ALTER COLUMN "paye" TYPE DECIMAL(10,2);
+ALTER TABLE "Payslip" ALTER COLUMN "net_pay" TYPE DECIMAL(10,2);

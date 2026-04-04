@@ -1,0 +1,25 @@
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: float-to-decimal-migration
+  labels:
+    cloud.googleapis.com/location: us-central1
+spec:
+  template:
+    spec:
+      template:
+        spec:
+          containers:
+            - image: us-central1-docker.pkg.dev/long-operator-466309-g6/simpalahr/simpalahr-backend-dev:latest
+              command: ["npx", "prisma", "migrate", "deploy"]
+              env:
+                - name: DATABASE_URL
+                  valueFrom:
+                    secretKeyRef:
+                      name: dev-database-url
+                      key: latest
+          serviceAccountName: simpala-backend-run-sa
+          timeoutSeconds: 600
+      vpcAccess:
+        connector: projects/long-operator-466309-g6/locations/us-central1/connectors/simpala-vpc-connector
+        egress: all-traffic

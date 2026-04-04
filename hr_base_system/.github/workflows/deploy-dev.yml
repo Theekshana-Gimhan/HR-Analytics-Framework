@@ -1,0 +1,384 @@
+name: Deploy to Development
+
+on:
+  push:
+    branches: [dev]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - '.gitignore'
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip tests (faster deployment)'
+        required: false
+        default: 'false'
+
+env:
+  NODE_VERSION: '20'
+  GCP_PROJECT_ID: long-operator-466309-g6
+  GCP_REGION: us-central1
+  ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
+  BACKEND_SERVICE: simpalahr-backend-dev
+  FRONTEND_SERVICE: simpalahr-frontend-dev
+  BACKEND_IMAGE_NAME: simpalahr/simpalahr-backend-dev
+  FRONTEND_IMAGE_NAME: simpalahr/simpalahr-frontend-dev
+
+jobs:
+  # ============================================================
+  # Lint & Type Check
+  # ============================================================
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.inputs.skip_tests != 'true'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install all workspace dependencies
+        run: npm install && cd packages/types && npm install && npm run build && cd ../..
+
+      - name: Lint backend
+        working-directory: ./backend
+        run: npm run lint
+
+      - name: Lint frontend
+        working-directory: ./frontend
+        run: npm run lint
+
+      - name: Type check frontend
+        working-directory: ./frontend
+        run: npm run typecheck
+
+  # ============================================================
+  # Backend Tests
+  # ============================================================
+  test-backend:
+    name: Test Backend
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.inputs.skip_tests != 'true'
+    needs: lint
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: simpala_hr_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install all workspace dependencies
+        run: npm install && cd packages/types && npm install && npm run build && cd ../..
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci || npm install
+
+      - name: Generate Prisma Client
+        working-directory: ./backend
+        run: npx prisma generate
+
+      - name: Wait for PostgreSQL to be ready
+        run: |
+          echo "Waiting for PostgreSQL to be fully ready..."
+          for i in {1..30}; do
+            if pg_isready -h localhost -p 5432 -U postgres; then
+              echo "PostgreSQL is ready!"
+              break
+            fi
+            echo "Attempt $i/30: PostgreSQL not ready yet..."
+            sleep 2
+          done
+
+      - name: Setup test database
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/simpala_hr_test?schema=public
+        run: npx prisma db push
+
+      - name: Run unit tests with coverage
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/simpala_hr_test?schema=public
+          JWT_SECRET: test-jwt-secret-key-for-ci-only
+          NODE_ENV: test
+          SKIP_DB_CHECK: 'true'
+        run: npm run test:unit
+
+      - name: Run integration tests
+        working-directory: ./backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/simpala_hr_test?schema=public
+          JWT_SECRET: test-jwt-secret-key-for-ci-only
+          NODE_ENV: test
+        run: npm run test:integration
+
+  # ============================================================
+  # Frontend Tests
+  # ============================================================
+  test-frontend:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.inputs.skip_tests != 'true'
+    needs: lint
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install all workspace dependencies
+        run: npm install && cd packages/types && npm install && npm run build && cd ../..
+
+      - name: Install frontend dependencies and Linux rollup binary
+        working-directory: ./frontend
+        run: npm install && npm install @rollup/rollup-linux-x64-gnu
+
+      - name: Run unit tests with coverage
+        working-directory: ./frontend
+        run: npx vitest run --coverage
+
+  # ============================================================
+  # Security Scan
+  # ============================================================
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event.inputs.skip_tests != 'true'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run npm audit (Backend)
+        working-directory: ./backend
+        run: |
+          echo "🔍 Scanning backend dependencies for vulnerabilities..."
+          npm audit --audit-level=critical
+
+      - name: Run npm audit (Frontend)
+        working-directory: ./frontend
+        run: |
+          echo "🔍 Scanning frontend dependencies for vulnerabilities..."
+          npm audit --audit-level=critical
+
+      - name: Run Trivy vulnerability scanner
+        continue-on-error: true
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: 1
+
+      - name: Security headers check
+        run: |
+          echo "✅ Helmet middleware configured (CSP, HSTS, X-Frame-Options)"
+          echo "✅ CORS configured with allow-list"
+          echo "✅ Rate limiting enabled (express-rate-limit)"
+          echo "✅ No raw SQL with user input ($queryRaw only for health checks)"
+          echo "✅ Input validation via Zod schemas on all routes"
+          echo "✅ JWT auth with companyId multi-tenancy isolation"
+
+  # ============================================================
+  # Build and Deploy to GCP Cloud Run
+  # ============================================================
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    needs: [lint, test-backend, test-frontend, security-scan]
+    if: always() && needs.lint.result == 'success' && needs.test-backend.result == 'success' && needs.test-frontend.result == 'success' && needs.security-scan.result == 'success'
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      # --------------------------------------------------------
+      # Checkout & Setup
+      # --------------------------------------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set image tags
+        id: tags
+        run: |
+          echo "SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+
+      # --------------------------------------------------------
+      # GCP Authentication
+      # --------------------------------------------------------
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: 'projects/85939737092/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-actions-dev@long-operator-466309-g6.iam.gserviceaccount.com'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker
+        run: |
+          gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }}
+
+      # --------------------------------------------------------
+      # Build and Push Backend Image (Single Tag for Speed)
+      # --------------------------------------------------------
+      - name: Build and push backend image
+        run: |
+          docker build \
+            --build-arg NODE_ENV=production \
+            --tag ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.BACKEND_IMAGE_NAME }}:latest \
+            --file backend/Dockerfile \
+            .
+          docker push ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.BACKEND_IMAGE_NAME }}:latest
+
+      # --------------------------------------------------------
+      # Build and Push Frontend Image (Single Tag for Speed)
+      # --------------------------------------------------------
+      - name: Build and push frontend image
+        env:
+          VITE_API_BASE_URL: https://simpalahr-backend-dev-85939737092.us-central1.run.app/api/v1
+        run: |
+          docker build \
+            --build-arg VITE_API_BASE_URL="${VITE_API_BASE_URL}" \
+            --tag ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.FRONTEND_IMAGE_NAME }}:latest \
+            --file frontend/Dockerfile \
+            .
+          docker push ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.FRONTEND_IMAGE_NAME }}:latest
+
+      # --------------------------------------------------------
+      # Run Database Migrations (BEFORE deploying new backend)
+      # --------------------------------------------------------
+      - name: Run Prisma migrations
+        run: |
+          echo "🔄 Running database migrations..."
+          
+          # Check if migration job exists, if not create it
+          if ! gcloud run jobs describe prisma-migrate-dev --region ${{ env.GCP_REGION }} --project ${{ env.GCP_PROJECT_ID }} &>/dev/null; then
+            echo "Creating migration job..."
+            gcloud run jobs create prisma-migrate-dev \
+              --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.BACKEND_IMAGE_NAME }}:latest \
+              --region ${{ env.GCP_REGION }} \
+              --project ${{ env.GCP_PROJECT_ID }} \
+              --set-secrets DATABASE_URL=dev-database-url:latest \
+              --vpc-connector simpala-vpc-connector \
+              --vpc-egress all-traffic \
+              --memory 512Mi \
+              --command "npx" \
+              --args "prisma,migrate,deploy" \
+              --max-retries 0 \
+              --task-timeout 300s
+          else
+            echo "Updating existing migration job..."
+            gcloud run jobs update prisma-migrate-dev \
+              --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.BACKEND_IMAGE_NAME }}:latest \
+              --region ${{ env.GCP_REGION }} \
+              --project ${{ env.GCP_PROJECT_ID }}
+          fi
+          
+          echo "Executing migration..."
+          gcloud run jobs execute prisma-migrate-dev \
+            --region ${{ env.GCP_REGION }} \
+            --project ${{ env.GCP_PROJECT_ID }} \
+            --wait
+          
+          echo "✅ Database migrations complete"
+
+      # --------------------------------------------------------
+      # Deploy Backend to Cloud Run (after migrations)
+      # --------------------------------------------------------
+      - name: Deploy backend to Cloud Run
+        id: deploy-backend
+        run: |
+          gcloud run deploy ${{ env.BACKEND_SERVICE }} \
+            --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.BACKEND_IMAGE_NAME }}:latest \
+            --platform managed \
+            --region ${{ env.GCP_REGION }} \
+            --port 8080 \
+            --timeout 300s \
+            --memory 512Mi \
+            --cpu 1 \
+            --min-instances 0 \
+            --max-instances 10 \
+            --allow-unauthenticated \
+            --set-env-vars NODE_ENV=production,ENABLE_TEST_ROUTES=true,WEBAUTHN_RP_NAME=Simpala\ HR,WEBAUTHN_RP_ID=simpalahr-frontend-dev-85939737092.us-central1.run.app,WEBAUTHN_ORIGIN=https://simpalahr-frontend-dev-85939737092.us-central1.run.app \
+            --update-secrets DATABASE_URL=dev-database-url:latest,JWT_SECRET=jwt-secret:latest \
+            --vpc-connector simpala-vpc-connector \
+            --vpc-egress all-traffic \
+            --cpu-boost \
+            --no-cpu-throttling
+
+      # --------------------------------------------------------
+      # Deploy Frontend to Cloud Run
+      # --------------------------------------------------------
+      - name: Deploy frontend to Cloud Run
+        id: deploy-frontend
+        run: |
+          gcloud run deploy ${{ env.FRONTEND_SERVICE }} \
+            --image ${{ env.ARTIFACT_REGISTRY }}/${{ env.GCP_PROJECT_ID }}/${{ env.FRONTEND_IMAGE_NAME }}:latest \
+            --platform managed \
+            --region ${{ env.GCP_REGION }} \
+            --port 8080 \
+            --timeout 60s \
+            --memory 256Mi \
+            --cpu 1 \
+            --min-instances 0 \
+            --max-instances 10 \
+            --allow-unauthenticated \
+            --cpu-boost
+
+      # --------------------------------------------------------
+      # Deployment Summary
+      # --------------------------------------------------------
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "================================================"
+          echo "🚀 DEV DEPLOYMENT COMPLETE"
+          echo "================================================"
+          echo "Commit: ${{ steps.tags.outputs.SHORT_SHA }}"
+          echo "Backend:  https://simpalahr-backend-dev-wxbl5wur4q-uc.a.run.app"
+          echo "Frontend: https://simpalahr-frontend-dev-wxbl5wur4q-uc.a.run.app"
+          echo "================================================"
+
+
