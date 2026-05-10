@@ -71,6 +71,7 @@ We are currently in the **Data Preparation and Feature Engineering** phase:
 - [x] Viva Defense Successfully Completed.
 - [x] Integrated IBM HR Analytics Benchmark Data.
 - [x] Execute Statistical Data Augmentation (500 records generated).
+- [x] Merge and Clean Hybrid Dataset (1,970 records total).
 - [ ] Implement Data Extraction & Anonymization Script (Local Data via Cloud DLP).
 - [ ] Design Conversational AI flow for weekly employee "Pulse Checks".
 - [ ] Engineer dynamic features in BigQuery (e.g., Sentiment Velocity, Burnout Spikes).
