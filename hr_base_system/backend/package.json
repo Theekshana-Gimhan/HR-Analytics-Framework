@@ -22,7 +22,8 @@
     "seed": "ts-node prisma/seeds/dev.seed.ts",
     "seed:test": "ts-node prisma/seeds/test.seed.ts",
     "seed:e2e-user": "node prisma/seeds/e2e-user.seed.cjs",
-    "db:reset": "npx prisma migrate reset --force && npm run seed"
+    "db:reset": "npx prisma migrate reset --force && npm run seed",
+    "extract-ai-data": "ts-node src/scripts/extract_ai_data.ts"
   },
   "keywords": [],
   "author": "",

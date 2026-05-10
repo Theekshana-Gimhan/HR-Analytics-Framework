@@ -1,0 +1,27 @@
+{
+  "intercept": -0.0219,
+  "age_norm": -0.2968,
+  "tenure_years_norm": 0.3959,
+  "salary_ratio_norm": 0.0514,
+  "career_stagnation": 0.48,
+  "late_count_norm": 0.18,
+  "absent_count_norm": 0.22,
+  "satisfaction_norm": -0.5141,
+  "baseline_attrition_rate": 0.3856,
+  "data_sources_used": [
+    "saudi",
+    "srilanka"
+  ],
+  "n_records_calibrated": 1421,
+  "calibration_date": "2026-05-10",
+  "coefficient_sources": {
+    "intercept": "calibrated",
+    "age_norm": "calibrated",
+    "tenure_years_norm": "calibrated",
+    "salary_ratio_norm": "calibrated",
+    "career_stagnation": "literature_default",
+    "late_count_norm": "literature_default",
+    "absent_count_norm": "literature_default",
+    "satisfaction_norm": "calibrated"
+  }
+}
