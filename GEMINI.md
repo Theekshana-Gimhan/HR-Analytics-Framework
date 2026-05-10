@@ -1,15 +1,15 @@
 # GEMINI.md - NexusHR Project Context
 
-## 🚀 Current Status (Updated: March 2026)
+## 🚀 Current Status (Updated: May 2026)
 - **Proposal Status:** ✅ Submitted and Approved.
 - **Viva Status:** ✅ Successfully Completed.
-- **Current Phase:** Phase 2 - Data Preparation and Feature Engineering.
+- **Current Phase:** Phase 2 - Data Preparation and Feature Engineering (Dataset Ready).
 
 ## Project Overview
 **NexusHR** is a Final Year Individual Research Project (COM 4901) for Kaatsu International University. It aims to develop a **Cost-Effective Predictive HR Analytics Framework** specifically for Sri Lankan SMEs (20-50 employees).
 
 ### Core Research Goal
-To democratize enterprise-grade AI by reducing operational costs to under **LKR 10,000 per month** (approx. LKR 200/employee) using a serverless cloud architecture.
+To democratize enterprise-grade AI by reducing operational costs to under **LKR 10,000 per month** (approx. LKR 200/employee) using a cloud-native serverless architecture.
 
 ### Key Research Components
 - **Domain:** Human Resource Management (HRM) & Machine Learning (ML).
@@ -27,23 +27,17 @@ The system is built as a monorepo located in the `hr_base_system` directory.
 - **Frontend:** React 19 (Vite), TypeScript, Material UI.
 - **Backend:** Node.js/Express 5, TypeScript, Prisma 6 ORM.
 - **Database:** PostgreSQL (deployed on GCP).
-- **AI Layer:** Google Vertex AI (AutoML Tabular & Batch Prediction).
+- **AI Layer:** Vertex AI (AutoML), Dialogflow CX (Pulse Checks), Cloud DLP (Compliance).
 - **Cloud Infrastructure:** Serverless (Cloud Run, Cloud Functions, Cloud Scheduler).
-
-### Key Features for AI Training
-- **Tenure:** Joining date vs. current date.
-- **Attendance:** Aggregated patterns (Late, Absent, Half-Day).
-- **Leave:** Frequency and duration of leave requests.
-- **Finance:** Salary positioning and allowances.
-- **Contextual:** Job title, department, and commute distance.
 
 ---
 
-## Next Steps (Phase 2)
-1.  **Data Extraction:** Implement Node.js script to extract anonymized HR records from PostgreSQL (Cloud SQL).
-2.  **Privacy Scrubbing:** Setup Google Cloud DLP for PII stripping.
-3.  **Data Augmentation:** ✅ COMPLETED. Generated 500 synthetic records in `data/synthetic_hr_data.csv`.
-4.  **Vertex AI Setup:** Initial dataset upload and AutoML Tabular training.
+## Next Steps (Phase 2 & 3)
+1.  **GCP Integration:** Upload `nexus_hr_master_dataset.csv` to Google Cloud Storage (GCS).
+2.  **BigQuery Setup:** Load dataset into BigQuery for serverless feature engineering.
+3.  **Privacy Automation:** Configure Cloud DLP for automated PII detection and masking.
+4.  **Model Training:** Initiate Vertex AI AutoML Tabular training on the master dataset.
+5.  **Conversational Flow:** Design the Dialogflow CX "Pulse Check" agent.
 
 
 ---
