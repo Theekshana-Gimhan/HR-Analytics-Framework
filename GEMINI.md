@@ -40,10 +40,11 @@ The system is built as a monorepo located in the `hr_base_system` directory.
 ---
 
 ## Next Steps (Phase 2)
-1.  **Data Extraction:** Implement Node.js script to extract anonymized HR records from PostgreSQL.
-2.  **Privacy Scrubbing:** Ensure full compliance with SL PDPA No. 9 of 2022 by stripping all PII (Names, NICs, Emails).
-3.  **Data Augmentation:** Python script to generate ~500 synthetic records based on local SME distributions.
+1.  **Data Extraction:** Implement Node.js script to extract anonymized HR records from PostgreSQL (Cloud SQL).
+2.  **Privacy Scrubbing:** Setup Google Cloud DLP for PII stripping.
+3.  **Data Augmentation:** ✅ COMPLETED. Generated 500 synthetic records in `data/synthetic_hr_data.csv`.
 4.  **Vertex AI Setup:** Initial dataset upload and AutoML Tabular training.
+
 
 ---
 
