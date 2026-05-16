@@ -216,7 +216,16 @@ def load_russian() -> pd.DataFrame | None:
         print("  [--] Russian dataset not found (run download_datasets.py).")
         return None
 
-    df = pd.read_csv(path, encoding='utf-8-sig')
+    df = None
+    for enc in ('utf-8-sig', 'utf-8', 'cp1251', 'latin-1'):
+        try:
+            df = pd.read_csv(path, encoding=enc)
+            break
+        except UnicodeDecodeError:
+            continue
+    if df is None:
+        print("  [WARN] Russian: could not decode file — skipping.")
+        return None
 
     target_col = find_col(df, ['event', 'left', 'attrition', 'turnover', 'quit'])
     if not target_col:

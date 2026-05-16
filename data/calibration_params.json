@@ -7,13 +7,14 @@
   "late_count_norm": 0.18,
   "absent_count_norm": 0.22,
   "satisfaction_norm": -0.5141,
-  "baseline_attrition_rate": 0.3856,
+  "baseline_attrition_rate": 0.4388,
   "data_sources_used": [
     "saudi",
+    "russian",
     "srilanka"
   ],
-  "n_records_calibrated": 1421,
-  "calibration_date": "2026-05-10",
+  "n_records_calibrated": 2550,
+  "calibration_date": "2026-05-16",
   "coefficient_sources": {
     "intercept": "calibrated",
     "age_norm": "calibrated",

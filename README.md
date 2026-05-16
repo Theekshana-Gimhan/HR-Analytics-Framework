@@ -38,11 +38,12 @@ A hybrid training approach using three tiers of data, weighted by trust level:
 | Source | Records | Type | Weight | Role |
 |---|---|---|---|---|
 | Saudi Employee Attrition (Mendeley, CC BY 4.0) | 1,191 | Real — developing-country private sector | 2.0 | Training |
+| Russian Employee Turnover (Kaggle, davinwijaya) | 1,129 | Real — private sector with personality traits | 2.0 | Training |
 | Local Synthetic (calibrated) | 500 | Simulated — Sri Lankan SME context | 0.5 | Training augmentation |
 | Sri Lanka Startups Survey (PLoS ONE 2023) | 230 | Real — Sri Lankan workforce | — | Held-out validation only |
 | IBM HR Analytics | 1,470 | Synthetic benchmark | — | Published comparison only |
 
-Synthetic data is generated using a logistic function with coefficients calibrated from the real datasets, not hand-coded rules. The calibration pipeline is reproducible: `download_datasets.py` → `preprocess_raw.py` → `calibrate.py` → `generate_synthetic_data.py` → `merge_and_clean_data.py`.
+Synthetic data is generated using a logistic function with coefficients calibrated from 2,550 real records (Saudi + Russian + Sri Lanka), not hand-coded rules. The calibration pipeline is reproducible: `download_datasets.py` → `preprocess_raw.py` → `calibrate.py` → `generate_synthetic_data.py` → `merge_and_clean_data.py`.
 
 When real Sri Lankan company data is contributed later, it is added with weight 4.0 and the pipeline reruns without architectural changes.
 
@@ -64,7 +65,7 @@ When real Sri Lankan company data is contributed later, it is added with weight 
 - [x] Calibrate synthetic data generator from real datasets (logistic regression on 1,421 real records).
 - [x] Replace hard-coded attrition rules with calibrated logistic function (scipy `expit`).
 - [x] Fix cross-source income normalisation: z-score within each source, retain raw as `MonthlyIncome_raw`.
-- [x] Build master training dataset: 1,691 records (Saudi Real + Synthetic), with `DataSource` and `SampleWeight` columns.
+- [x] Build master training dataset: 2,820 records (Saudi Real + Russian Real + Synthetic), with `DataSource` and `SampleWeight` columns.
 - [x] Create held-out validation set from Sri Lanka PLoS ONE survey (230 records, never in training).
 - [x] Separate IBM data into benchmark-only file for published comparison.
 - [ ] Configure Google Cloud DLP for automated PII detection and masking before GCP upload.

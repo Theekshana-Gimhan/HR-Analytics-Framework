@@ -47,10 +47,11 @@ Democratize enterprise-grade AI for Sri Lankan SMEs at under **LKR 10,000/month*
 
 No public individual-level HR attrition dataset exists for Sri Lankan companies — confirmed research gap, documented as motivation.
 
-### Training Data (nexus_hr_master_dataset.csv — 1,691 records)
+### Training Data (nexus_hr_master_dataset.csv — 2,820 records)
 | Source | Records | Type | Weight |
 |---|---|---|---|
 | Saudi Employee Attrition (Mendeley, CC BY 4.0) | 1,191 | Real — developing country private sector | 2.0 |
+| Russian Employee Turnover (Kaggle, davinwijaya) | 1,129 | Real — private sector turnover with personality traits | 2.0 |
 | Local Synthetic (calibrated logistic model) | 500 | Simulated — Sri Lankan SME context | 0.5 |
 
 ### Validation & Benchmark (held out, never trained on)
@@ -60,7 +61,7 @@ No public individual-level HR attrition dataset exists for Sri Lankan companies 
 | benchmark_ibm.csv | IBM HR Analytics, 1,470 records | Comparison against published literature |
 
 ### Calibration Pipeline
-Synthetic data parameters are NOT hard-coded. They are derived from a logistic regression fit on 1,421 real records:
+Synthetic data parameters are NOT hard-coded. They are derived from a logistic regression fit on 2,550 real records (Saudi + Russian + Sri Lanka):
 
 **Calibrated coefficients (from real data):**
 - `age_norm`: -0.297 — older employees less likely to leave
@@ -88,13 +89,15 @@ When real Sri Lankan company data is contributed:
 
 ```
 scripts/download_datasets.py    # Downloads real datasets; prints manual steps for Kaggle
-scripts/preprocess_raw.py       # Converts xlsx to clean numeric CSVs
+scripts/preprocess_raw.py       # Converts xlsx to clean numeric CSVs (Saudi + Sri Lanka)
 scripts/calibrate.py            # Fits logistic regression on real data → calibration_params.json
 scripts/generate_synthetic_data.py  # Generates 500 synthetic LKR-context records
 scripts/merge_and_clean_data.py     # Builds master + validation + benchmark files
 ```
 
 Run in order. If a dataset is missing, the pipeline degrades gracefully to literature defaults.
+The Russian dataset (Kaggle CSV) is read directly by calibrate.py and merge_and_clean_data.py —
+it does not need preprocess_raw.py. Both scripts handle cp1251 (Cyrillic) encoding automatically.
 
 ---
 

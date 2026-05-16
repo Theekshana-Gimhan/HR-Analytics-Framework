@@ -98,10 +98,18 @@ def load_and_map(path: str, source_key: str) -> pd.DataFrame | None:
     if not os.path.exists(path):
         return None
 
-    try:
-        df = pd.read_csv(path, encoding='utf-8-sig', low_memory=False)
-    except Exception as e:
-        print(f"  [WARN] Could not read {path}: {e}")
+    df = None
+    for enc in ('utf-8-sig', 'utf-8', 'cp1251', 'latin-1'):
+        try:
+            df = pd.read_csv(path, encoding=enc, low_memory=False)
+            break
+        except UnicodeDecodeError:
+            continue
+        except Exception as e:
+            print(f"  [WARN] Could not read {path}: {e}")
+            return None
+    if df is None:
+        print(f"  [WARN] Could not decode {path} with any known encoding — skipping.")
         return None
 
     aliases = COLUMN_ALIASES[source_key]
