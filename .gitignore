@@ -17,3 +17,9 @@ data/local_hr_data.csv
 scripts/__pycache__/
 __pycache__/
 *.pyc
+
+# Trained model binaries (reproducible via scripts/train_model.py)
+models/
+# Generated training reports/plots (reproducible)
+reports/*.png
+reports/training_report.json

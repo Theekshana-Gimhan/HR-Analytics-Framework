@@ -290,19 +290,30 @@ def load_srilanka() -> pd.DataFrame | None:
         # Already preprocessed to binary
         df['Attrition_binary'] = vals
     else:
-        # Raw ordinal scale: threshold >= 4 as high flight risk
-        df['Attrition_binary'] = (vals >= 4).astype(float)
+        # Raw ordinal scale: threshold >= 3.5 as high flight risk. This is the
+        # canonical definition (matches preprocess_raw.py). The normal path above
+        # passes through the precomputed binary; this fallback only fires if a raw
+        # ET_composite is fed directly.
+        df['Attrition_binary'] = (vals >= 3.5).astype(float)
     df['DataSource']   = 'SriLanka_Survey'
     df['SampleWeight'] = SAMPLE_WEIGHTS['SriLanka_Survey']
 
+    # Most SL columns already carry standard names from preprocess_raw.py; the
+    # aliases below keep this robust if a differently-named file is supplied.
+    # The 8 psychometric constructs (incl. Happiness, InnovativeWorkBehavior,
+    # LeaderMemberExchange, CoworkerSupport) pass through unchanged.
     rename_map = {}
     for candidate, standard in [
         (['age'], 'Age'),
         (['gender', 'sex'], 'Gender'),
         (['jobsatisfaction', 'job_satisfaction', 'satisfaction', 'jobsat'], 'JobSatisfaction'),
         (['worklifebalance', 'work_life_balance'], 'WorkLifeBalance'),
+        (['happiness', 'h_composite'], 'Happiness'),
         (['managementsupport', 'management_support'], 'ManagementSupport'),
         (['careermanagement', 'career_management'], 'CareerManagement'),
+        (['innovativeworkbehavior', 'iwb_composite', 'iwb'], 'InnovativeWorkBehavior'),
+        (['leadermemberexchange', 'lmx_composite', 'lmx'], 'LeaderMemberExchange'),
+        (['coworkersupport', 'cws_composite', 'cws'], 'CoworkerSupport'),
     ]:
         col = find_col(df, candidate)
         if col and col not in rename_map.values():
@@ -336,21 +347,77 @@ MASTER_COLUMNS = [
     # Saudi-specific
     'ManagementSupport', 'CareerManagement',
     # Target and metadata
-    'Attrition', 'Attrition_binary', 'DataSource', 'SampleWeight',
+    # NOTE: the raw per-source 'Attrition' label is deliberately NOT carried into
+    # the output. It is inconsistent across sources (Saudi ' Yes'/' No' with
+    # leading spaces, Russian has none — its label lives in 'event', synthetic is
+    # clean 'Yes'/'No'). 'Attrition_binary' is the single canonical 0/1 target.
+    'Attrition_binary', 'DataSource', 'SampleWeight',
 ]
+
+# The one true target column. Everything downstream (train_model.py) must use this.
+TARGET_COL = 'Attrition_binary'
 
 
 def build_master(frames: list) -> pd.DataFrame:
     combined = pd.concat(frames, ignore_index=True, sort=False)
 
+    # Raw per-source label columns must never become features — they are the
+    # target in disguise. 'Attrition' is the Saudi/synthetic raw label; 'event'
+    # is the Russian raw label (already encoded into Attrition_binary). Carrying
+    # either as a feature would leak the target into the model.
+    LEAK_COLS = {'Attrition', 'event', 'left', 'quit', 'turnover'}
+
     # Keep only columns that appear in the master schema
     keep = [c for c in MASTER_COLUMNS if c in combined.columns]
-    # Also keep any extra columns from real datasets not in schema
+    # Also keep any extra columns from real datasets not in schema (minus leakage)
     extra = [c for c in combined.columns if c not in MASTER_COLUMNS
-             and c not in ('Attrition',)]
+             and c not in LEAK_COLS]
     combined = combined[keep + extra]
 
     return combined
+
+
+def assert_target_integrity(df: pd.DataFrame, name: str,
+                            expected_sources: list | None = None) -> None:
+    """
+    Fail loudly if the canonical target is malformed. Catches the silent failure
+    modes that would otherwise corrupt training: a source whose labels all went
+    NaN (e.g. Russian if its 'event' column is ever missed), stray non-binary
+    values, or an empty source. Better to crash here than to train on bad labels.
+    """
+    errors = []
+
+    if TARGET_COL not in df.columns:
+        raise AssertionError(f"[{name}] missing target column '{TARGET_COL}'")
+
+    target = df[TARGET_COL]
+
+    n_nan = int(target.isna().sum())
+    if n_nan:
+        bad = (df.loc[target.isna(), 'DataSource'].value_counts().to_dict()
+               if 'DataSource' in df.columns else '?')
+        errors.append(f"{n_nan} NaN target value(s); by source: {bad}")
+
+    bad_vals = set(pd.unique(target.dropna())) - {0.0, 1.0}
+    if bad_vals:
+        errors.append(f"non-binary target values present: {sorted(bad_vals)}")
+
+    if 'DataSource' in df.columns:
+        per_source = df.groupby('DataSource')[TARGET_COL].count()
+        empty = per_source[per_source == 0].index.tolist()
+        if empty:
+            errors.append(f"source(s) contributed 0 labelled rows: {empty}")
+        if expected_sources:
+            missing = [s for s in expected_sources if s not in per_source.index]
+            if missing:
+                errors.append(f"expected source(s) absent: {missing}")
+
+    if errors:
+        raise AssertionError(f"[{name}] target integrity check FAILED:\n    - "
+                             + "\n    - ".join(errors))
+
+    print(f"  [CHECK] {name}: target '{TARGET_COL}' OK "
+          f"({len(df)} rows, {int(target.sum())} positive, 0 NaN)")
 
 
 def print_summary(df: pd.DataFrame, title: str):
@@ -396,17 +463,22 @@ def main():
         return
 
     master = build_master(training_frames)
+    expected = [f['DataSource'].iloc[0] for f in training_frames]
+    print("\nValidating integrity before write...")
+    assert_target_integrity(master, "master", expected_sources=expected)
     master.to_csv(OUT_MASTER, index=False)
     print_summary(master, "TRAINING MASTER DATASET")
     print(f"\n  Saved to: {OUT_MASTER}")
 
     # ── Held-out validation: Sri Lanka survey ─────────────────────────────────
     if srilanka is not None:
+        assert_target_integrity(srilanka, "validation_srilanka")
         srilanka.to_csv(OUT_VALIDATION, index=False)
         print(f"\n  Validation set (Sri Lanka) saved to: {OUT_VALIDATION}")
 
     # ── Benchmark only: IBM ───────────────────────────────────────────────────
     if ibm is not None:
+        assert_target_integrity(ibm, "benchmark_ibm")
         ibm.to_csv(OUT_BENCHMARK, index=False)
         print(f"  IBM benchmark saved to:             {OUT_BENCHMARK}")
 

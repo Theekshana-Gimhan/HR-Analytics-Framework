@@ -218,6 +218,9 @@ def preprocess_srilanka(path_in: str, path_out: str):
     out_cols = ['Age', 'Gender',
                 'JS_composite', 'WLB_composite', 'H_composite',
                 'MS_composite', 'CM_composite',
+                # IWB/LMX/CWS were computed above but previously dropped — they are
+                # the constructs that lift the local SL model from ~0.84 to ~0.94 AUC.
+                'IWB_composite', 'LMX_composite', 'CWS_composite',
                 'ET_composite', 'Attrition_binary']
     out = df[[c for c in out_cols if c in df.columns]].copy()
 
@@ -225,8 +228,12 @@ def preprocess_srilanka(path_in: str, path_out: str):
     out = out.rename(columns={
         'JS_composite':  'JobSatisfaction',
         'WLB_composite': 'WorkLifeBalance',
+        'H_composite':   'Happiness',
         'MS_composite':  'ManagementSupport',
         'CM_composite':  'CareerManagement',
+        'IWB_composite': 'InnovativeWorkBehavior',
+        'LMX_composite': 'LeaderMemberExchange',
+        'CWS_composite': 'CoworkerSupport',
     })
 
     out.to_csv(path_out, index=False)

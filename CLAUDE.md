@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **NexusHR** (codebase name: Simpala HR) is a Final Year Research Project (COM 4901) at Kaatsu International University. It is a **Cost-Effective Predictive HR Analytics Framework** targeting Sri Lankan SMEs (20–50 employees), with a goal of < LKR 10,000/month operational cost.
 
-The system combines a production HR platform (payroll, leave, attendance) with a GCP-based ML pipeline for employee attrition prediction using Vertex AI AutoML.
+The system combines a production HR platform (payroll, leave, attendance) with a GCP-based ML pipeline for employee attrition prediction using scikit-learn Random Forest + SHAP (Explainable AI).
 
 ---
 
@@ -14,16 +14,18 @@ The system combines a production HR platform (payroll, leave, attendance) with a
 
 ```
 hr_base_system/          # Main monorepo (the working application)
-  backend/               # Node.js/Express/Prisma REST API (port 3001)
+  backend/               # Node.js/Express 5/Prisma 6 REST API (port 3001)
   frontend/              # React 19/Vite/MUI SPA (port 3000)
   packages/types/        # Shared TypeScript types (@simpala/types)
   ops/                   # Cloud Build, deploy, DB, seed, test scripts
   tests/                 # Performance/E2E tests
   .github/               # CI/CD workflows and copilot-instructions.md
-data/                    # CSV datasets for ML pipeline
-scripts/                 # Python data processing scripts
+data/                    # ML datasets (master, validation, benchmark, raw sources)
+  raw/                   # Downloaded real-world datasets (Saudi, Russian, Sri Lanka)
+scripts/                 # Python ML pipeline (5 scripts, run in order)
 docs/                    # Technical and product documentation
-references/              # Research papers
+references/              # Research papers (17 references)
+masters_plan.md          # Comprehensive project record (all decisions, methodology, timeline)
 ```
 
 ---
@@ -197,31 +199,73 @@ Governed by Sri Lanka Personal Data Protection Act (PDPA) No. 9 of 2022. PII mus
 
 ---
 
-## ML / AI Pipeline (GCP)
+## ML / AI Pipeline
 
-**Current status:** Phase 2 complete — `data/nexus_hr_master_dataset.csv` (1970 records) is ready for training.
+**Current status:** Phase 3 — `scripts/train_model.py` runs end-to-end. Two models reported: a weak cross-domain **transfer** model (SL ROC-AUC ~0.64) and a strong **local** model (SL ROC-AUC ~0.94). See masters_plan.md §12. GCP deployment pending.
 
-### Data Sources
+### Data Strategy
 
-- `data/ibm_hr_attrition.csv` — IBM benchmark (1470 records)
-- `data/synthetic_hr_data.csv` — Generated Sri Lankan SME data (500 records)
-- `data/nexus_hr_master_dataset.csv` — Merged, cleaned master dataset
+Training uses weighted multi-source data (real international + calibrated synthetic). Validation uses held-out real Sri Lankan data.
+
+| File | Records | Role |
+|---|---|---|
+| `data/nexus_hr_master_dataset.csv` | 2,820 | Training (Saudi Real 1,191 + Russian Real 1,129 + Synthetic 500) |
+| `data/validation_srilanka.csv` | 230 | Held-out validation (real Sri Lankan, never in training; 8 psychometric constructs) |
+| `data/benchmark_ibm.csv` | 1,470 | Published comparison only |
+| `data/calibration_params.json` | — | Logistic regression coefficients from 2,550 real records |
+
+Real data gets weight 2.0, synthetic gets 0.5. Income is z-score normalised within each source before merging. Missing features are NaN, never 0.
+
+### Two-model evaluation (`scripts/train_model.py`)
+
+- **Transfer model** — trains on the master, validates on SL using only the 4 features shared with the SL survey (`Age, Gender, JobSatisfaction, WorkLifeBalance`). Ordinal features are min-max rescaled within each dataset (master is 1–3 scale, SL is 1–5). Uses SMOTETOMEK + threshold tuning on an internal split. Weak (~0.64) — this is expected and is itself a finding.
+- **Local model** — trains + 5-fold CV *within* the SL data on **8 psychometric constructs** (`JobSatisfaction, WorkLifeBalance, Happiness, ManagementSupport, CareerManagement, InnovativeWorkBehavior, LeaderMemberExchange, CoworkerSupport`). Strong (~0.94, multi-seed CV) with a usable operating point (P 0.73 / R 0.82). These constructs come from `preprocess_raw.py` (computed from the raw xlsx) and are **survey-sourced** — their production input is the planned Dialogflow pulse-check, not operational HR data.
+- **SL target:** `Attrition_binary` = turnover-intention composite (mean of 4 ET items) **≥ 3.5** on a 1–5 scale → 14.3% positives. (Earlier docs said "≥ 4"; the code is and always was 3.5.)
+- Outputs: `models/attrition_rf.joblib`, `reports/training_report.json`, `reports/shap_*.png` (all gitignored).
+
+### Python Pipeline (scripts/ — run in order)
+
+```
+scripts/download_datasets.py       # Fetch real datasets (Saudi, Russian, Sri Lanka)
+scripts/preprocess_raw.py          # Convert xlsx → clean numeric CSV
+scripts/calibrate.py               # Fit logistic regression → calibration_params.json
+scripts/generate_synthetic_data.py # Generate 500 calibrated synthetic records
+scripts/merge_and_clean_data.py    # Build master + validation + benchmark files
+```
+
+The Russian dataset (Kaggle CSV, cp1251 encoding) is read directly by `calibrate.py` and `merge_and_clean_data.py` — it skips `preprocess_raw.py`. Both scripts handle cp1251 (Cyrillic) encoding via multi-encoding fallback.
+
+### Python Environment
+
+There is no `requirements.txt` — install dependencies manually into a venv:
+
+```powershell
+python -m venv .venv && .\.venv\Scripts\Activate.ps1
+pip install pandas numpy scipy scikit-learn openpyxl   # openpyxl is needed to read the .xlsx sources
+# Phase 3 training (scripts/train_model.py) will additionally need: imbalanced-learn shap
+```
+
+Scripts are run directly (`python scripts/<name>.py`); some accept `argparse` flags (e.g. `generate_synthetic_data.py`). If a source dataset is missing, the pipeline degrades gracefully to literature-default coefficients rather than failing.
 
 ### GCP Services
 
 | Service | Purpose |
 |---|---|
-| Vertex AI AutoML Tabular | Attrition prediction model |
-| Vertex Explainable AI | SHAP feature attributions for manager trust |
-| BigQuery | Serverless analytics and feature engineering |
-| Google Cloud Storage | Dataset and model artifact storage |
-| Dialogflow CX | Weekly "Pulse Check" employee sentiment surveys |
+| Cloud Storage (GCS) | Dataset and model artifact storage |
+| BigQuery | Feature engineering and analytics |
 | Cloud DLP | Automated PII masking before model training |
-| Cloud Run | Serverless container deployment |
+| Cloud Run | Serverless model inference endpoint (scales to zero) |
+| Cloud Scheduler | Monthly retraining triggers |
+| Dialogflow CX | Weekly "Pulse Check" employee sentiment surveys |
 
-### ML Target
+### ML Approach
 
-Recall > 80% on attrition label (minimize false negatives for early warning).
+- **Model:** scikit-learn Random Forest + SMOTETOMEK (NOT Vertex AI AutoML — too costly and opaque)
+- **Explainability:** SHAP TreeExplainer (exact, not approximated)
+- **Goal metric:** Recall > 80% on attrition class (minimize false negatives for early warning)
+- **Target column:** `Attrition_binary` is the single canonical 0/1 label. Never train on the raw `Attrition` string column — each source encodes it differently (Saudi `' Yes'`/`' No'` with leading spaces, Russian's label is in `event`), so `merge_and_clean_data.py` strips those raw/leakage columns before writing. The merge step asserts target integrity (no NaN, binary only, every source contributes labelled rows) before saving.
+- **Training weights:** `SampleWeight` column in master dataset, passed to `sample_weight` parameter
+- **Caveat — feature fragmentation:** sources barely overlap on features (satisfaction is Saudi-only, attendance/leave are synthetic-only, personality traits are Russian-only; only age/income/tenure are shared). Treat SHAP findings on source-exclusive features cautiously, and remember the SL validation target is turnover *intention*, not actual attrition.
 
 ---
 
@@ -247,4 +291,4 @@ Recall > 80% on attrition label (minimize false negatives for early warning).
 - `backend/src/routes/leave.routes.ts` — Route validation pattern
 - `backend/src/services/leave.service.ts` — Transaction pattern examples
 - `packages/types/src/index.ts` — Shared TypeScript type definitions
-- `GEMINI.md` — Current project status and next steps
+- `masters_plan.md` — Comprehensive project record (decisions, methodology, timeline, evaluation plan, current status)
