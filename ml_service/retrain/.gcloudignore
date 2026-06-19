@@ -1,0 +1,7 @@
+# Explicit Cloud Build upload filter. Its mere presence stops gcloud from
+# falling back to .gitignore (which excludes the staged scripts/ + data/ that the
+# Docker build needs). Keep scripts/ and data/ IN the build context.
+*.ps1
+.gitignore
+__pycache__/
+*.pyc

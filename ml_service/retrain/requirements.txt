@@ -1,0 +1,10 @@
+# Retrain job: only what's needed to reproduce + upload the model bundles.
+# SHAP/matplotlib are intentionally omitted (they only affect the report, which
+# the job does not publish) to keep the image small and the build fast.
+scikit-learn==1.8.0
+numpy==2.4.1
+scipy==1.17.1
+joblib==1.5.3
+pandas==2.3.3
+imbalanced-learn==0.14.1
+google-cloud-storage==2.19.0

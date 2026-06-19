@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+*.md
+deploy.ps1
+cloudbuild.yaml
+.gitignore
+.dockerignore

@@ -258,6 +258,44 @@ Scripts are run directly (`python scripts/<name>.py`); some accept `argparse` fl
 | Cloud Scheduler | Monthly retraining triggers |
 | Dialogflow CX | Weekly "Pulse Check" employee sentiment surveys |
 
+### ML Service / Inference (`ml_service/` — deployed)
+
+A FastAPI inference service is **deployed and live**. It is separate from the
+Node HR backend and serves both models on separate routes.
+
+| Item | Value |
+|---|---|
+| Project / region | `kpi-uat` / `us-central1` (NOT the stale `long-operator-466309-g6` in `quick-deploy.ps1`) |
+| Service | Cloud Run `simpalahr-ml-dev` — IAM-locked (`--no-allow-unauthenticated`), scale-to-zero, 1 CPU / 1 GiB |
+| URL | `https://simpalahr-ml-dev-809106518632.us-central1.run.app` |
+| Model bucket | `gs://kpi-uat-simpalahr-ml/models/` (loaded at startup; baked-in fallback) |
+| Runtime SA | `simpalahr-ml-runtime@kpi-uat` (`storage.objectViewer` on bucket only) |
+| Retrain | Cloud Run Job `simpalahr-ml-retrain` + monthly Cloud Scheduler |
+
+Routes: `GET /health`, `GET /model-info`, `POST /predict/local` (8 constructs,
+strong ~0.94), `POST /predict/transfer` (4 features, weak ~0.64). Each prediction
+returns probability, threshold, flag, risk band, and per-request SHAP contributions.
+
+```powershell
+# from ml_service/  (run scripts/train_model.py first so the bundles exist)
+.\setup-iam.ps1                 # once: bucket grant, runtime SA, invoker grant
+.\deploy.ps1                    # build (regional Cloud Build) -> Cloud Run
+.\retrain\setup-retrain.ps1     # once: provision the monthly retrain Job + Scheduler
+python scripts\upload_model.py  # publish freshly-trained bundles to GCS
+```
+
+Call the locked endpoint with an identity token:
+```bash
+curl -H "Authorization: Bearer $(gcloud auth print-identity-token)" $URL/health
+```
+
+**Critical:** `ml_service/requirements.txt` pins `scikit-learn==1.8.0` to match
+`scripts/train_model.py` — a version mismatch can break joblib unpickling.
+Preprocessing in `ml_service/app/model.py` mirrors `train_model.py` exactly
+(gender encoding, persisted min-max rescale bounds, median imputation) for
+train/serve parity. `.ps1` deploy scripts must stay ASCII-only (Windows
+PowerShell reads them as ANSI).
+
 ### ML Approach
 
 - **Model:** scikit-learn Random Forest + SMOTETOMEK (NOT Vertex AI AutoML — too costly and opaque)

@@ -122,15 +122,21 @@ def encode_gender(series: pd.Series) -> pd.Series:
                   'female': 0.0, 'f': 0.0, '0': 0.0})
 
 
-def prepare_features(df: pd.DataFrame, features: list) -> pd.DataFrame:
+def prepare_features(df: pd.DataFrame, features: list, return_bounds: bool = False):
     """
     Build a numeric feature matrix. Ordinal satisfaction features are min-max
     rescaled to [0,1] WITHIN this dataset so a 1-3 instrument and a 1-5
     instrument become comparable. Fitting per-dataset is intentional: it assumes
     each instrument's observed min/max represent its lowest/highest levels, which
     is the most defensible cross-instrument alignment available.
+
+    If ``return_bounds`` is True, also return the per-feature (lo, hi) min-max
+    bounds used for the ORDINAL_RESCALE columns. The inference service needs these
+    to reproduce the exact same rescaling on a single incoming row (it cannot
+    recompute a dataset min/max from one sample).
     """
     X = pd.DataFrame(index=df.index)
+    bounds = {}
     for col in features:
         if col == 'Gender':
             X[col] = encode_gender(df[col]) if col in df.columns else np.nan
@@ -139,8 +145,15 @@ def prepare_features(df: pd.DataFrame, features: list) -> pd.DataFrame:
                              errors='coerce')
         if col in ORDINAL_RESCALE:
             lo, hi = vals.min(), vals.max()
-            vals = (vals - lo) / (hi - lo) if pd.notna(lo) and hi > lo else vals * 0 + 0.5
+            if pd.notna(lo) and hi > lo:
+                bounds[col] = (float(lo), float(hi))
+                vals = (vals - lo) / (hi - lo)
+            else:
+                bounds[col] = None
+                vals = vals * 0 + 0.5
         X[col] = vals
+    if return_bounds:
+        return X, bounds
     return X
 
 
@@ -233,8 +246,11 @@ def evaluate_local_sl_model(val_df: pd.DataFrame, target_recall: float) -> dict:
               f"-- rerun preprocess_raw.py + merge_and_clean_data.py]")
         return {}
 
-    X = val_df[feats].apply(pd.to_numeric, errors='coerce')
-    X = X.fillna(X.median())
+    X_raw = val_df[feats].apply(pd.to_numeric, errors='coerce')
+    # Persist the median imputer so the inference service imputes identically.
+    local_imputer = SimpleImputer(strategy='median')
+    X = pd.DataFrame(local_imputer.fit_transform(X_raw), columns=feats,
+                     index=val_df.index)
     y = val_df[TARGET].astype(int).values
 
     print("\n" + "-" * 64)
@@ -305,6 +321,10 @@ def evaluate_local_sl_model(val_df: pd.DataFrame, target_recall: float) -> dict:
         'operating_points': points['operating_points'],
         'feature_importance': importances,
         'shap_mean_abs': shap_local,
+        # Servable artifacts (prefixed with _ so they're stripped before JSON dump).
+        '_final_model': final,
+        '_imputer': local_imputer,
+        '_threshold': float(tuned['f1_optimal']),
     }
 
 
@@ -390,7 +410,11 @@ def main():
 
     # ── Sri Lanka validation (primary, honest) ─────────────────────────────────
     val = pd.read_csv(VALIDATION_PATH)
-    Xv = imputer.transform(prepare_features(val, PRIMARY_FEATURES))
+    # Capture the SL min-max bounds: production transfer inputs arrive on the SL
+    # 1-5 scale, so the inference service must rescale them with THESE bounds to
+    # land in the same [0,1] space the model was trained on.
+    Xv_df, transfer_bounds = prepare_features(val, PRIMARY_FEATURES, return_bounds=True)
+    Xv = imputer.transform(Xv_df)
     yv = val[TARGET].astype(int).values
     proba_v = clf.predict_proba(Xv)[:, 1]
     # Oracle threshold: what SL itself would need for the recall floor (discussion
@@ -464,12 +488,47 @@ def main():
           f"{'' if not local else '  range ' + str(local.get('roc_auc_range'))}")
     print(f"  -> {comparison['conclusion']}")
 
-    # ── Persist ────────────────────────────────────────────────────────────────
-    model_bundle = {'model': clf, 'imputer': imputer,
-                    'features': PRIMARY_FEATURES,
-                    'ordinal_rescale': ORDINAL_RESCALE}
-    model_path = os.path.join(MODELS_DIR, 'attrition_rf.joblib')
-    joblib.dump(model_bundle, model_path)
+    # ── Persist both servable bundles ──────────────────────────────────────────
+    # Standardized bundle schema consumed by ml_service/. Each carries everything
+    # needed to reproduce training-time preprocessing on a single incoming row.
+    version = date.today().strftime('%Y.%m.%d')
+
+    transfer_bundle = {
+        'model': clf,
+        'imputer': imputer,
+        'features': PRIMARY_FEATURES,
+        'ordinal_rescale': ORDINAL_RESCALE,
+        'rescale_bounds': transfer_bounds,   # SL 1-5 -> [0,1] bounds for inference
+        'threshold': float(tuned['f1_optimal']),
+        'model_type': 'transfer',
+        'sl_roc_auc': results['validation_srilanka'].get('roc_auc'),
+        'trained_date': str(date.today()),
+        'version': version,
+    }
+    transfer_path = os.path.join(MODELS_DIR, 'attrition_transfer.joblib')
+    joblib.dump(transfer_bundle, transfer_path)
+    # Back-compat alias (older references expect attrition_rf.joblib).
+    joblib.dump(transfer_bundle, os.path.join(MODELS_DIR, 'attrition_rf.joblib'))
+
+    local_path = None
+    if local and local.get('_final_model') is not None:
+        local_bundle = {
+            'model': local['_final_model'],
+            'imputer': local['_imputer'],
+            'features': local['features'],
+            'ordinal_rescale': [],            # constructs used on raw 1-5 scale
+            'rescale_bounds': {},
+            'threshold': local['_threshold'],
+            'model_type': 'local',
+            'sl_roc_auc': local.get('roc_auc_mean'),
+            'trained_date': str(date.today()),
+            'version': version,
+        }
+        local_path = os.path.join(MODELS_DIR, 'attrition_local.joblib')
+        joblib.dump(local_bundle, local_path)
+
+    # Strip the non-serializable servable artifacts before the JSON report dump.
+    local_report = {k: v for k, v in local.items() if not k.startswith('_')} if local else local
 
     report = {
         'generated': str(date.today()),
@@ -491,15 +550,17 @@ def main():
         ],
         'comparison': comparison,
         'transfer_feature_importance': importances,
-        'results': {**results, 'local_model': local},
+        'results': {**results, 'local_model': local_report},
     }
     report_path = os.path.join(REPORTS_DIR, 'training_report.json')
     with open(report_path, 'w') as f:
         json.dump(report, f, indent=2)
 
     print("\n" + "=" * 64)
-    print(f"  Model saved   -> {model_path}")
-    print(f"  Report saved  -> {report_path}")
+    print(f"  Transfer model -> {transfer_path}")
+    if local_path:
+        print(f"  Local model    -> {local_path}")
+    print(f"  Report saved   -> {report_path}")
     if not HAVE_IMBLEARN or not HAVE_SHAP:
         miss = [p for p, ok in [('imbalanced-learn', HAVE_IMBLEARN),
                                 ('shap', HAVE_SHAP)] if not ok]

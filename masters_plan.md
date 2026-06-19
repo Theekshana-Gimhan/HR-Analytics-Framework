@@ -475,6 +475,28 @@ await prisma.leaveType.create({
 
 ## 8. GCP Cloud Architecture
 
+### Deployed Environment (verified June 2026)
+
+The inference architecture is **live** in the team's dev project. Coordinates:
+
+| Item | Value |
+|---|---|
+| **Project** | `kpi-uat` (MAD Dev Hub, #809106518632) |
+| **Region** | `us-central1` (org policy `constraints/gcp.resourceLocations` pins resources here — Cloud Build must run regionally) |
+| **Artifact Registry** | `us-central1-docker.pkg.dev/kpi-uat/simpalahr/` |
+| **Model bucket** | `gs://kpi-uat-simpalahr-ml/models/` (both joblib bundles + `manifest.json`) |
+| **Inference service** | Cloud Run `simpalahr-ml-dev` (IAM-locked, scale-to-zero, 1 CPU / 1 GiB) |
+| **Runtime SA** | `simpalahr-ml-runtime@kpi-uat` (least-privilege: `storage.objectViewer` on the bucket only) |
+| **Caller** | HR backend SA `staging-runtime-sa@kpi-uat` granted `roles/run.invoker` |
+| **Retrain** | Cloud Run Job `simpalahr-ml-retrain` + Cloud Scheduler monthly (`0 2 1 * *`, Asia/Colombo) |
+
+The service (`ml_service/`) is a FastAPI app serving **both** models on separate
+routes — `POST /predict/local` (8 constructs, strong) and `POST /predict/transfer`
+(4 features, weak) — each returning probability, risk band, flag, and per-request
+SHAP contributions. Models load from GCS at startup (baked-in fallback). See
+`ml_service/README.md`. *(The repo's `hr_base_system/quick-deploy.ps1` references a
+stale project `long-operator-466309-g6`; real deploys target `kpi-uat`.)*
+
 ### Services and Their Roles
 
 | Service | Purpose | Cost Model |
@@ -482,8 +504,8 @@ await prisma.leaveType.create({
 | **Cloud Storage (GCS)** | Store training data, model artifacts, SHAP plots | Pay per GB stored (~USD 0.02/GB/month) |
 | **BigQuery** | Feature engineering (tenure bands, salary percentile vs. cohort), analytics | Pay per query (first 1 TB/month free) |
 | **Cloud DLP** | Automated PII detection and masking before training | Pay per transformation (~USD 1 per 10K items) |
-| **Cloud Run** | Serverless model inference endpoint | Pay per request + compute time (scales to zero) |
-| **Cloud Scheduler** | Trigger monthly retraining jobs | ~USD 0.10/month for 1 job |
+| **Cloud Run** | Serverless model inference endpoint (`simpalahr-ml-dev`) | Pay per request + compute time (scales to zero) |
+| **Cloud Scheduler** | Trigger monthly retraining job (`simpalahr-ml-retrain`) | ~USD 0.10/month for 1 job |
 
 ### Cost Model (How < LKR 10,000/month is Achieved)
 
@@ -977,6 +999,6 @@ Future additions for Phase 3:
 
 ---
 
-*Last updated: June 1, 2026*
-*Current phase: Phase 3 — ML pipeline. `train_model.py` written and run end-to-end; see §12 Evaluation Limitations for first-run results. GCP upload still pending.*
-*Next milestone: decide between (a) recovering more overlapping Sri Lanka features and (b) reframing the contribution around framework/methodology, then GCP deployment.*
+*Last updated: June 20, 2026*
+*Current phase: Phase 4 — GCP deployment. The transfer-vs-local evaluation is complete (§12), and both models are now served from a live, IAM-locked Cloud Run endpoint (`simpalahr-ml-dev` in `kpi-uat`) with models stored in GCS and a monthly retrain Job + Scheduler provisioned (§8, `ml_service/`).*
+*Next milestone: wire the HR app (`hr_base_system`) to call `/predict` and surface risk in the UI; build the Dialogflow Pulse Check that produces the 8 live construct inputs; add Cloud DLP + BigQuery; then collect real Sri Lankan actual-attrition data from a partner SME.*

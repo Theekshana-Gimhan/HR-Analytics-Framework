@@ -1,0 +1,7 @@
+# Baked-in model bundles are copied in at deploy time (reproducible via
+# scripts/train_model.py + the GCS bucket). Keep the dir, ignore the binaries.
+models/*.joblib
+models/manifest.json
+__pycache__/
+*.pyc
+.venv/

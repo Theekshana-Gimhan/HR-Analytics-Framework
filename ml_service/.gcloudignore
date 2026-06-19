@@ -1,0 +1,12 @@
+# Explicit Cloud Build upload filter. Its presence stops gcloud from falling back
+# to .gitignore (which would exclude models/*.joblib — the baked-in fallback the
+# image needs). Keep app/ and models/*.joblib IN the build context.
+*.md
+*.ps1
+smoke_test.py
+http_test.py
+retrain/
+__pycache__/
+*.pyc
+.venv/
+models/manifest.json
