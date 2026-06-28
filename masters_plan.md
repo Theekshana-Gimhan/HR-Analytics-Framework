@@ -497,6 +497,32 @@ SHAP contributions. Models load from GCS at startup (baked-in fallback). See
 `ml_service/README.md`. *(The repo's `hr_base_system/quick-deploy.ps1` references a
 stale project `long-operator-466309-g6`; real deploys target `kpi-uat`.)*
 
+### HR-app integration (live on dev — verified June 28, 2026)
+
+The production HR app now **consumes** the inference service, closing the loop
+from model → product. The HR system is a **separate GitHub repo**
+(`Mad-marketing-git/HR`, branch `dev`), distinct from this research repo; the
+integration is done **over the API boundary** (thin proxy + HTTP), not by merging
+the ML pipeline into the product.
+
+- **PR #207** (merged): backend proxy service + `/api/v1/attrition` routes
+  (`ATTRITION_VIEW`-gated, ID-token auth via the Cloud Run metadata server) and a
+  frontend **Attrition Risk card** on the Employee Detail page (8 Likert sliders →
+  risk band + probability vs threshold + top SHAP factors, beta-labelled).
+- **PR #208** (merged): deploy enablement — reconciled a broken `package-lock.json`
+  that had frozen all dev deploys since ~June 8, added `ML_SERVICE_URL` to the
+  deploy workflow, added `.prettierignore`.
+- **Activation:** `ML_SERVICE_URL` set on `simpalahr-backend-dev` (rev `00021-zoh`);
+  frontend rev `00019-wex`. **End-to-end verified** with a real OWNER login:
+  `status`→`enabled`, `predict/local`→LOW (p≈0.09), `predict/transfer`→HIGH
+  (p≈0.71), both with coherent SHAP; bad input → 400 Zod validation.
+- **Cost evidence:** with both Cloud Run services (HR + ML) scaling to zero, idle
+  cost ≈ $0 — the < LKR 10,000/month thesis is now demonstrable, not just claimed.
+- **Known issue:** the backend's 20s upstream timeout is shorter than the ML
+  service's scale-to-zero cold start; the first prediction after idle can time out
+  once (succeeds on retry). Planned fix: ~60s timeout + one retry (keeping
+  scale-to-zero rather than paying for a warm instance).
+
 ### Services and Their Roles
 
 | Service | Purpose | Cost Model |
@@ -999,6 +1025,6 @@ Future additions for Phase 3:
 
 ---
 
-*Last updated: June 20, 2026*
-*Current phase: Phase 4 — GCP deployment. The transfer-vs-local evaluation is complete (§12), and both models are now served from a live, IAM-locked Cloud Run endpoint (`simpalahr-ml-dev` in `kpi-uat`) with models stored in GCS and a monthly retrain Job + Scheduler provisioned (§8, `ml_service/`).*
+*Last updated: June 28, 2026*
+*Current phase: Phase 4 — GCP deployment **and HR-app integration, both live on dev**. The transfer-vs-local evaluation is complete (§12); both models are served from a live, IAM-locked Cloud Run endpoint (`simpalahr-ml-dev` in `kpi-uat`) with GCS-stored models and a monthly retrain Job + Scheduler (§8, `ml_service/`); and the production HR app (`Mad-marketing-git/HR`) now calls the inference service and surfaces an Attrition Risk card, verified end-to-end (§8, PRs #207/#208). Next: Dialogflow Pulse Check to feed the 8 constructs automatically, then Cloud DLP + BigQuery and real actual-attrition data.*
 *Next milestone: wire the HR app (`hr_base_system`) to call `/predict` and surface risk in the UI; build the Dialogflow Pulse Check that produces the 8 live construct inputs; add Cloud DLP + BigQuery; then collect real Sri Lankan actual-attrition data from a partner SME.*

@@ -201,7 +201,7 @@ Governed by Sri Lanka Personal Data Protection Act (PDPA) No. 9 of 2022. PII mus
 
 ## ML / AI Pipeline
 
-**Current status:** Phase 3 — `scripts/train_model.py` runs end-to-end. Two models reported: a weak cross-domain **transfer** model (SL ROC-AUC ~0.64) and a strong **local** model (SL ROC-AUC ~0.94). See masters_plan.md §12. GCP deployment pending.
+**Current status:** Phase 4 — **deployed and integrated**. `scripts/train_model.py` runs end-to-end producing two models: a weak cross-domain **transfer** model (SL ROC-AUC ~0.64) and a strong **local** model (SL ROC-AUC ~0.94). Both are served live from an IAM-locked Cloud Run service (`simpalahr-ml-dev`, see below), and the production HR app now consumes them (Attrition Risk card, see "HR-app integration"). See masters_plan.md §12. Next: Dialogflow Pulse Check to feed the 8 constructs automatically.
 
 ### Data Strategy
 
@@ -295,6 +295,37 @@ Preprocessing in `ml_service/app/model.py` mirrors `train_model.py` exactly
 (gender encoding, persisted min-max rescale bounds, median imputation) for
 train/serve parity. `.ps1` deploy scripts must stay ASCII-only (Windows
 PowerShell reads them as ANSI).
+
+### HR-app integration (lives in the *product* repo, not this one)
+
+The production HR system is a **separate repo**, `Mad-marketing-git/HR` (default
+branch `dev`) — NOT this research repo. This repo (`HR-Analytics-Framework`)
+vendors a now-stale copy of it under `hr_base_system/`; the canonical, actively
+developed product is the GitHub repo. The two share no git history.
+
+The ML work integrates with the product **over the API boundary** (thin proxy +
+HTTP), never as a monorepo merge. Shipped via **PR #207** (merged to `dev`):
+
+- **Backend** `services/attrition.service.ts` — dependency-free proxy. On Cloud
+  Run it mints an ID token from the instance metadata server (audience = ML URL)
+  and calls `/predict/{local,transfer}`. Routes `/api/v1/attrition/{status,
+  predict/local,predict/transfer}`, Zod-validated, gated by a new `ATTRITION_VIEW`
+  permission (OWNER auto, ADMIN granted). Disabled gracefully when `ML_SERVICE_URL`
+  is unset.
+- **Frontend** `AttritionRiskCard` on the **Employee Detail page** (`/employees/:id`,
+  lazy-loaded) — 8 Likert sliders → risk band, probability vs threshold, top SHAP
+  factors, with a beta caveat (survey-sourced inputs, predicts *intention*).
+- **Activation:** set `ML_SERVICE_URL` on `simpalahr-backend-dev`. **Live on dev**
+  (verified end-to-end: status→enabled, local→LOW, transfer→HIGH with SHAP).
+  Durability fix in **PR #208** (lockfile sync that unblocked all dev deploys +
+  `ML_SERVICE_URL` in `deploy-dev.yml` + `.prettierignore`).
+- **Known issue:** the backend's 20s fetch timeout in `attrition.service.ts` is
+  shorter than the ML service's scale-to-zero cold start, so the first prediction
+  after idle can time out once (works on retry). Fix = raise timeout to ~60s + a
+  single retry; do NOT set ML `min-instances=1` (breaks the cost thesis).
+
+See masters_plan.md and the project memory `project_repo_topology.md` for the
+manual deploy procedure used when CI Actions quota is exhausted.
 
 ### ML Approach
 
