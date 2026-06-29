@@ -542,8 +542,13 @@ stack and preserving the cost thesis.
   design:** employees see only a confirmation, never their own risk score.
 - **Honest caveats (kept in the UI):** the short 2-item form is not the full
   validated battery (noisier), and the model predicts turnover *intention*.
-- **Status:** both PRs open against `dev` at time of writing; scoring is
-  best-effort so an ML cold start / outage never blocks a submission.
+- **Status: merged + live on dev** (June 29, 2026). Both PRs squash-merged to
+  `dev`; migration `20260629090000_add_pulse_responses` applied via the
+  `prisma-migrate-dev` Job; backend rev `00025-qiv`, frontend rev `00021-vaf`.
+  **End-to-end verified** with a real OWNER login: `questions`→16 +
+  `scoringEnabled`, `status`→false→true after submit, `responses`→scored with
+  SHAP + persisted, `latest/:id`→manager readout. Scoring is best-effort so an
+  ML cold start / outage never blocks a submission.
 
 ### Services and Their Roles
 
@@ -1048,5 +1053,5 @@ Future additions for Phase 3:
 ---
 
 *Last updated: June 29, 2026*
-*Current phase: Phase 4 — GCP deployment **and HR-app integration, both live on dev**. The transfer-vs-local evaluation is complete (§12); both models are served from a live, IAM-locked Cloud Run endpoint (`simpalahr-ml-dev` in `kpi-uat`) with GCS-stored models and a monthly retrain Job + Scheduler (§8, `ml_service/`); and the production HR app (`Mad-marketing-git/HR`) now calls the inference service and surfaces an Attrition Risk card, verified end-to-end (§8, PRs #207/#208). The cold-start known-issue is fixed (PR #210, live). The **Pulse Check** — the lightweight in-app weekly survey that auto-produces the 8 constructs (chosen over a full Dialogflow CX agent to keep the cost thesis) — is built (PRs #211 backend / #212 frontend, open against `dev`). Next: Cloud DLP + BigQuery, real actual-attrition data, and the thesis writeup.*
+*Current phase: Phase 4 — GCP deployment **and HR-app integration, both live on dev**. The transfer-vs-local evaluation is complete (§12); both models are served from a live, IAM-locked Cloud Run endpoint (`simpalahr-ml-dev` in `kpi-uat`) with GCS-stored models and a monthly retrain Job + Scheduler (§8, `ml_service/`); and the production HR app (`Mad-marketing-git/HR`) now calls the inference service and surfaces an Attrition Risk card, verified end-to-end (§8, PRs #207/#208). The cold-start known-issue is fixed (PR #210, live). The **Pulse Check** — the lightweight in-app weekly survey that auto-produces the 8 constructs (chosen over a full Dialogflow CX agent to keep the cost thesis) — is **merged + live on dev** (PRs #211 backend / #212 frontend), verified end-to-end. Next: Cloud DLP + BigQuery, real actual-attrition data, and the thesis writeup.*
 *Next milestone: wire the HR app (`hr_base_system`) to call `/predict` and surface risk in the UI; build the Dialogflow Pulse Check that produces the 8 live construct inputs; add Cloud DLP + BigQuery; then collect real Sri Lankan actual-attrition data from a partner SME.*

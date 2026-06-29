@@ -324,7 +324,7 @@ HTTP), never as a monorepo merge. Shipped via **PR #207** (merged to `dev`):
   (the first attempt wakes the scaled-to-zero instance, the retry hits it warm).
   Deliberately NOT `min-instances=1` (that would break the cost thesis).
 
-#### Pulse Check — the automated construct source (PRs #211 backend, #212 frontend)
+#### Pulse Check — the automated construct source (PRs #211/#212, merged + live on dev)
 
 The 8 local-model constructs were previously typed in by hand on the
 `AttritionRiskCard`. The **Pulse Check** is the lightweight, in-stack
