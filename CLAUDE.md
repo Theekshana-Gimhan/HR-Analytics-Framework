@@ -201,7 +201,7 @@ Governed by Sri Lanka Personal Data Protection Act (PDPA) No. 9 of 2022. PII mus
 
 ## ML / AI Pipeline
 
-**Current status:** Phase 4 — **deployed and integrated**. `scripts/train_model.py` runs end-to-end producing two models: a weak cross-domain **transfer** model (SL ROC-AUC ~0.64) and a strong **local** model (SL ROC-AUC ~0.94). Both are served live from an IAM-locked Cloud Run service (`simpalahr-ml-dev`, see below), and the production HR app now consumes them (Attrition Risk card, see "HR-app integration"). See masters_plan.md §12. Next: Dialogflow Pulse Check to feed the 8 constructs automatically.
+**Current status:** Phase 4 — **deployed, integrated, and self-feeding**. `scripts/train_model.py` runs end-to-end producing two models: a weak cross-domain **transfer** model (SL ROC-AUC ~0.64) and a strong **local** model (SL ROC-AUC ~0.94). Both are served live from an IAM-locked Cloud Run service (`simpalahr-ml-dev`, see below), and the production HR app now consumes them (Attrition Risk card + the new **Pulse Check**, see "HR-app integration"). See masters_plan.md §12. Next: Cloud DLP + BigQuery; collect real SL *actual*-attrition data; thesis writeup.
 
 ### Data Strategy
 
@@ -319,10 +319,34 @@ HTTP), never as a monorepo merge. Shipped via **PR #207** (merged to `dev`):
   (verified end-to-end: status→enabled, local→LOW, transfer→HIGH with SHAP).
   Durability fix in **PR #208** (lockfile sync that unblocked all dev deploys +
   `ML_SERVICE_URL` in `deploy-dev.yml` + `.prettierignore`).
-- **Known issue:** the backend's 20s fetch timeout in `attrition.service.ts` is
-  shorter than the ML service's scale-to-zero cold start, so the first prediction
-  after idle can time out once (works on retry). Fix = raise timeout to ~60s + a
-  single retry; do NOT set ML `min-instances=1` (breaks the cost thesis).
+- **Cold-start fix (PR #210, merged + live on dev, rev `00021`→`00023-zoh/riy`):**
+  `attrition.service.ts` now uses a 60s per-request timeout + one automatic retry
+  (the first attempt wakes the scaled-to-zero instance, the retry hits it warm).
+  Deliberately NOT `min-instances=1` (that would break the cost thesis).
+
+#### Pulse Check — the automated construct source (PRs #211 backend, #212 frontend)
+
+The 8 local-model constructs were previously typed in by hand on the
+`AttritionRiskCard`. The **Pulse Check** is the lightweight, in-stack
+alternative to a full Dialogflow CX agent (chosen to preserve the
+<LKR 10k/month cost thesis): a weekly 16-item Likert micro-survey (2 items per
+construct) that auto-produces the 8 constructs and scores them.
+
+- **Backend** `services/pulse.service.ts` + `constants/pulse.questions.ts`:
+  16 items → 8 constructs via **mean-of-items** (same definition as
+  `preprocess_raw.py`, so train/serve parity holds). `PulseResponse` model +
+  migration `20260629090000_add_pulse_responses` — one upserted row per employee
+  per ISO week (raw answers + constructs + best-effort cached prediction). Routes
+  `/api/v1/pulse/{questions,status,responses,latest/:id}`; self-submit gated by a
+  new `PULSE_SUBMIT` permission, manager read reuses `ATTRITION_VIEW`. Scoring is
+  best-effort — an ML outage never blocks a submission.
+- **Frontend**: `/pulse` page (sliders), a dashboard nudge banner, a nav entry,
+  and `PulseRiskCard` (manager-side latest pulse-derived risk on the employee
+  detail page). **Privacy by design:** employees see only a confirmation, never
+  their own risk score.
+- **Honesty caveat:** the 2-items-per-construct form is NOT the full validated
+  PLoS ONE battery (noisier estimate), and the model predicts turnover
+  *intention*. Both are disclosed in the UI.
 
 See masters_plan.md and the project memory `project_repo_topology.md` for the
 manual deploy procedure used when CI Actions quota is exhausted.

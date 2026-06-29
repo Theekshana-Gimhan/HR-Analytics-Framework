@@ -518,10 +518,32 @@ the ML pipeline into the product.
   (p≈0.71), both with coherent SHAP; bad input → 400 Zod validation.
 - **Cost evidence:** with both Cloud Run services (HR + ML) scaling to zero, idle
   cost ≈ $0 — the < LKR 10,000/month thesis is now demonstrable, not just claimed.
-- **Known issue:** the backend's 20s upstream timeout is shorter than the ML
-  service's scale-to-zero cold start; the first prediction after idle can time out
-  once (succeeds on retry). Planned fix: ~60s timeout + one retry (keeping
-  scale-to-zero rather than paying for a warm instance).
+- **Cold-start fix — PR #210** (merged + live on dev, backend rev `00023-riy`):
+  the upstream timeout is now 60s with one automatic retry (first call wakes the
+  scaled-to-zero instance, the retry lands warm), keeping scale-to-zero rather
+  than paying for a warm instance.
+
+### Pulse Check — closing the data loop (PRs #211 / #212, June 29, 2026)
+
+The local model's 8 constructs needed a production source. Rather than a full
+Dialogflow CX agent (extra cost + GCP dependency), the chosen approach is a
+**lightweight in-app weekly Pulse Check** — keeping everything in the existing
+stack and preserving the cost thesis.
+
+- **Design:** 16 Likert items (2 per construct), averaged into the 8 constructs
+  using the *same* mean-of-items definition as training (`preprocess_raw.py`),
+  so train/serve parity holds. One submission per employee per ISO week (upsert).
+- **PR #211 (backend):** `PulseResponse` model + migration, question bank,
+  `pulse.service` (compute constructs → best-effort score via the ML proxy →
+  persist), routes `/api/v1/pulse/{questions,status,responses,latest/:id}`, a new
+  `PULSE_SUBMIT` permission (manager read reuses `ATTRITION_VIEW`). 9 unit tests.
+- **PR #212 (frontend):** `/pulse` survey page, dashboard nudge banner, nav entry,
+  and a manager-side `PulseRiskCard` on the employee detail page. **Privacy by
+  design:** employees see only a confirmation, never their own risk score.
+- **Honest caveats (kept in the UI):** the short 2-item form is not the full
+  validated battery (noisier), and the model predicts turnover *intention*.
+- **Status:** both PRs open against `dev` at time of writing; scoring is
+  best-effort so an ML cold start / outage never blocks a submission.
 
 ### Services and Their Roles
 
@@ -1025,6 +1047,6 @@ Future additions for Phase 3:
 
 ---
 
-*Last updated: June 28, 2026*
-*Current phase: Phase 4 — GCP deployment **and HR-app integration, both live on dev**. The transfer-vs-local evaluation is complete (§12); both models are served from a live, IAM-locked Cloud Run endpoint (`simpalahr-ml-dev` in `kpi-uat`) with GCS-stored models and a monthly retrain Job + Scheduler (§8, `ml_service/`); and the production HR app (`Mad-marketing-git/HR`) now calls the inference service and surfaces an Attrition Risk card, verified end-to-end (§8, PRs #207/#208). Next: Dialogflow Pulse Check to feed the 8 constructs automatically, then Cloud DLP + BigQuery and real actual-attrition data.*
+*Last updated: June 29, 2026*
+*Current phase: Phase 4 — GCP deployment **and HR-app integration, both live on dev**. The transfer-vs-local evaluation is complete (§12); both models are served from a live, IAM-locked Cloud Run endpoint (`simpalahr-ml-dev` in `kpi-uat`) with GCS-stored models and a monthly retrain Job + Scheduler (§8, `ml_service/`); and the production HR app (`Mad-marketing-git/HR`) now calls the inference service and surfaces an Attrition Risk card, verified end-to-end (§8, PRs #207/#208). The cold-start known-issue is fixed (PR #210, live). The **Pulse Check** — the lightweight in-app weekly survey that auto-produces the 8 constructs (chosen over a full Dialogflow CX agent to keep the cost thesis) — is built (PRs #211 backend / #212 frontend, open against `dev`). Next: Cloud DLP + BigQuery, real actual-attrition data, and the thesis writeup.*
 *Next milestone: wire the HR app (`hr_base_system`) to call `/predict` and surface risk in the UI; build the Dialogflow Pulse Check that produces the 8 live construct inputs; add Cloud DLP + BigQuery; then collect real Sri Lankan actual-attrition data from a partner SME.*
