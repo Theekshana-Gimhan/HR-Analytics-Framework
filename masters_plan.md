@@ -152,7 +152,7 @@ Train on international real-world data from developing countries with similar ec
 
 | File | Source | Records | Purpose |
 |---|---|---|---|
-| `data/validation_srilanka.csv` | Sri Lanka Startups Survey (PLoS ONE 2023, Senarathna et al.) | 230 | **Primary validation** — real Sri Lankan workforce responses. Turnover-intention composite (mean of 4 ET items) ≥ 3.5 (on a 1–5 scale) thresholded as high flight risk → 33 positives (14.3%). Carries 8 psychometric constructs (see Local Model, §12). |
+| `data/validation_srilanka.csv` | Sri Lanka Startups Survey (Kanchana & Jayathilaka, PLoS ONE 2023) | 230 | **Primary validation** — real Sri Lankan workforce responses. Turnover-intention composite (mean of 4 ET items) ≥ 3.5 (on a 1–5 scale) thresholded as high flight risk → 33 positives (14.3%). Carries 8 psychometric constructs (see Local Model, §12). |
 | `data/benchmark_ibm.csv` | IBM HR Analytics (Kaggle) | 1,470 | **Published comparison only** — used to compare model performance against results in published papers (Sarker 2021, etc.). Not in training because it is synthetic and uses fictional income units. |
 
 ### Why These Weights
@@ -924,7 +924,7 @@ This section records non-obvious decisions and their reasoning, for thesis discu
 |---|---|---|
 | D1 | Alqahtani, A. et al. (2025). Saudi Employee Attrition Dataset. Mendeley Data, V1. DOI: 10.17632/6z2hty8php.1. CC BY 4.0. | Training (1,191 records) |
 | D2 | davinwijaya. Employee Turnover Dataset. Kaggle. (Real Russian company data.) | Training (1,129 records) |
-| D3 | Senarathna, I.N. et al. (2023). Sri Lanka Startup Turnover Intention Survey. PLoS ONE. DOI: 10.1371/journal.pone.0281729. | Validation (230 records) |
+| D3 | Kanchana, L. & Jayathilaka, R. (2023). Factors impacting employee turnover intentions among professionals in Sri Lankan startups. PLOS ONE, 18(2), e0281729. DOI: 10.1371/journal.pone.0281729. | Validation (230 records) |
 | D4 | IBM. HR Employee Attrition and Performance Dataset. Kaggle. (Synthetic.) | Benchmark (1,470 records) |
 
 ### Research Papers
