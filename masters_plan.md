@@ -37,6 +37,7 @@
 | **Repository** | `HR-Analytics-Framework` on GitHub |
 | **Proposal Status** | Submitted and Approved |
 | **Viva Status** | Successfully Completed (May 2026) |
+| **Interim Report** | Submitted (June 2026); research audit completed 5 July 2026 — see created_docs/Audit_and_FineTuning_Plan.md |
 
 ### Elevator Pitch
 
@@ -642,7 +643,7 @@ scikit-learn Random Forest + SHAP provides equivalent or better accuracy at near
 - Project proposal approved
 - Viva defense successfully completed
 
-### Phase 2: Data Preparation & Feature Engineering (In Progress)
+### Phase 2: Data Preparation & Feature Engineering (Completed)
 
 **April 4, 2026** — `2f88fa3` Initial commit
 - Research proposal, 17 reference papers, and base HR system committed
@@ -685,11 +686,94 @@ scikit-learn Random Forest + SHAP provides equivalent or better accuracy at near
 | Use within-source z-scores for income | Raw merging would conflate SAR, LKR, and fictional IBM units | Model learns relative purchasing power, not absolute amounts |
 | Leave NaN instead of imputing 0 | Zero is a valid observation; NaN is missing information | Prevents the model from learning false patterns |
 
+### Phase 3: Model Training & Evaluation (Completed — June 2026)
+
+`scripts/train_model.py` implemented end-to-end, producing the two-model result
+that is the project's central empirical finding: a weak cross-domain **transfer**
+model (SL ROC-AUC ~0.64 on the 4 features shared with the SL survey) versus a
+strong **local** model (SL ROC-AUC ~0.94, multi-seed CV, on the 8 psychometric
+constructs), with a usable operating point (Precision 0.73 / Recall 0.82). SHAP
+TreeExplainer reports generated for both models (`reports/shap_local.png`,
+`reports/shap_summary.png`). Both trained model bundles persisted via `joblib`.
+See §12 for full metrics and honest limitations.
+
+### Phase 4: Deployment & Product Integration (Completed — June 2026)
+
+- FastAPI inference service (`ml_service/`) deployed to an IAM-locked, scale-to-zero
+  Cloud Run service `simpalahr-ml-dev` (project `kpi-uat`, region `us-central1`);
+  model bundles published to `gs://kpi-uat-simpalahr-ml/models/`; monthly retrain
+  Cloud Run Job + Cloud Scheduler provisioned. See §8 for full architecture.
+- HR-app integration shipped **over the API boundary** (not a monorepo merge) via
+  **PR #207**: a dependency-free attrition proxy service plus the `AttritionRiskCard`
+  on the Employee Detail page — live on dev, verified end-to-end June 28, 2026.
+  **PR #208** fixed a broken lockfile that had frozen dev deploys and wired
+  `ML_SERVICE_URL` into the deploy workflow. **PR #210** fixed a cold-start
+  UX issue with a 60s timeout + one automatic retry, deliberately preserving
+  scale-to-zero rather than paying for a warm instance.
+- **Pulse Check** (PRs #211/#212, June 29, 2026): a 16-item weekly Likert
+  micro-survey that auto-produces the local model's 8 constructs (mean-of-items,
+  matching `preprocess_raw.py` for train/serve parity), replacing manual entry on
+  the `AttritionRiskCard`. New `PulseResponse` model + migration
+  (`20260629090000_add_pulse_responses`), permission-gated routes, and a
+  manager-side `PulseRiskCard`. Privacy by design: employees never see their own
+  score. Live on dev, verified end-to-end. This **supersedes** the Dialogflow CX
+  "Pulse Check" originally planned in Phase 4 below — descoped on cost grounds
+  (see §11).
+
+### Phase 5: Interim Report & Research Audit (June–July 2026)
+
+- Interim Report (COM4901, 15% of module marks) written, verified (20 pages,
+  6 figures, 5 tables, 21 IEEE references), and submitted June 2026.
+- Corrected the Sri Lanka validation dataset attribution to Kanchana &
+  Jayathilaka (2023), *PLOS ONE* 18(2):e0281729.
+- Full research audit completed 5 July 2026, producing a prioritized fine-tuning
+  plan (P1–P15) for the Final Report — see
+  `created_docs/Audit_and_FineTuning_Plan.md` and §11/§12/§13 below.
+
 ---
 
 ## 11. Remaining Work — What Is Ahead
 
-### Phase 2 Completion (GCP Setup)
+The original Phase 3–5 roadmap that previously occupied this section (ML training,
+Cloud Run deployment, HR-app integration, Pulse Check) was **completed in June
+2026** — see §10, Phases 3–4, for what actually shipped. The planned **Dialogflow CX** conversational agent was
+deliberately **superseded** by the lighter, cheaper in-app **Pulse Check**
+(§10 Phase 4, §8) on cost-thesis grounds. What remains is driven by the
+**5 July 2026 research audit** (`created_docs/Audit_and_FineTuning_Plan.md`,
+plan items P1–P15) plus the fixed COM4901 final-report timeline.
+
+### July 2026 — Evaluation hardening (audit P1–P7)
+
+| # | Action | Defends / Answers | Effort |
+|---|---|---|---|
+| P1 | Leakage & common-method-bias audit of the local model: confirm SMOTETOMEK + threshold tuning are fold-internal; verify zero ET-item/construct overlap; add fold-level SD + bootstrap CI; add Brier score / reliability curve | The 0.94 headline | 1–2 days |
+| P2 | RQ3 ablation: train with vs without synthetic rows; weight sensitivity (2.0/0.5 vs 1.0/1.0 vs real-only) | RQ3 (currently unanswered) | 1 day |
+| P3 | Baseline comparison: Logistic Regression + Gradient Boosting alongside Random Forest, both settings | "Why Random Forest?" viva question | 0.5–1 day |
+| P4 | Intention-threshold sensitivity: rerun SL target at ≥ 4.0 vs the current ≥ 3.5, show the transfer-vs-local contrast survives | Binarization choice | 0.5 day |
+| P5 | Fairness audit: subgroup AUC/recall by gender and age band; explicit protected-attribute decision (keep-and-audit vs drop-and-test) | LO2, ethics, Age-dominance in the transfer model | 1–2 days |
+| P6 | Formal cost study: ≥ 1 month GCP billing export; 3–4 architecture comparison (scale-to-zero Cloud Run vs min-instances=1 vs always-on VM vs Vertex AI) via scripted load test; hidden line items (Artifact Registry, Cloud Build, egress); USD→LKR rate/date + FX sensitivity note; SaaS PEPM comparison row | RQ2 | 2–3 days spread over the month |
+| P7 | Ethics compliance: confirm KIU requirements for the SUS study and Pulse Check primary data; obtain approval/waiver | Guidelines §8; gates P8 — **start immediately** | admin |
+
+### August 2026 — Evaluation completion & dissertation (P8–P12)
+
+| # | Action | Notes |
+|---|---|---|
+| P8 | SUS study (5–10 SME stakeholders) | After P7 |
+| P9 | Literature expansion to ~40+ references (transfer learning, synthetic tabular data, common method bias, fairness in algorithmic HR, turnover-intention validity); replace weak sources | Feeds Chapter 2 |
+| P10 | Final dissertation: formal **Threats to Validity** section; **DSRM (Peffers et al. 2007)** phase-mapping table | The intellectual core of the writeup |
+| P11 | Assemble the required **Project Diary / Logbook** from `masters_plan.md` + git history + supervisor meeting notes | Required for final submission |
+| P12 | Small textual fixes carried from the interim report: abstract idle-vs-operational cost wording, "barely above chance" precision, SLBFE statistic precision | 0.5 day |
+
+### Stretch (P13–P15, only if time permits — must not displace P1–P12)
+
+| # | Action | Value |
+|---|---|---|
+| P13 | Partner-SME real *attrition* (behaviour) data through the pipeline | Would dissolve the transfer model's label-shift confound — highest scientific value, lowest controllability |
+| P14 | Pulse Check short-form reliability once ≥ ~50 real pulse responses exist | Defends the 16-item descope empirically |
+| P15 | Cloud DLP + BigQuery hardening | The original "Phase 2 GCP setup" items below — re-scoped as optional hardening, not required for the cost/PDPA claims already made |
+
+<details>
+<summary>Original Phase 2 GCP setup items (re-scoped as P15, optional)</summary>
 
 - [ ] Configure Google Cloud DLP job for automated PII detection/masking
 - [ ] Upload `data/nexus_hr_master_dataset.csv` to Google Cloud Storage bucket
@@ -699,69 +783,16 @@ scikit-learn Random Forest + SHAP provides equivalent or better accuracy at near
   - Salary percentile within department cohort
   - Rolling attendance trend (3-month window)
 
-### Phase 3: Machine Learning & Explainable AI
+</details>
 
-- [ ] Write `scripts/train_model.py`:
-  1. Load `nexus_hr_master_dataset.csv` with `SampleWeight` column
-  2. Train/test split (stratified by attrition class)
-  3. Apply **SMOTETOMEK** on training split only (never on test/validation data)
-  4. Train `RandomForestClassifier` with `sample_weight` parameter
-  5. Evaluate on held-out `validation_srilanka.csv` (primary metric: Recall > 80%)
-  6. Evaluate on `benchmark_ibm.csv` (comparison against published results)
-  7. Compute **SHAP values** (TreeExplainer for exact attributions)
-  8. Save feature importance plot, confusion matrix, classification report
-  9. Serialize trained model to pickle/joblib for deployment
-- [ ] Handle Russian personality trait columns (60% NaN in master dataset — likely drop or use as optional features)
-- [ ] Hyperparameter tuning (n_estimators, max_depth, min_samples_split)
-- [ ] Document model card: training data, performance metrics, known limitations
+### Fixed deadlines
 
-### Phase 4: Conversational AI Integration
-
-- [ ] Design weekly "Pulse Check" conversation flow in **Dialogflow CX**
-  - Employee receives a short weekly survey via chat (3–5 questions)
-  - Measures sentiment, engagement, and emerging concerns
-  - Not a replacement for formal surveys — a lightweight, frequent check-in
-- [ ] Run a monthly batch retraining job that incorporates new attendance/leave data from the HR system
-- [ ] Update BigQuery feature store with conversation sentiment scores
-- [ ] Schedule retraining via Cloud Scheduler
-
-### Phase 5: Application Development & Serverless Deployment
-
-- [ ] Deploy trained model to **Cloud Run** as a Flask/FastAPI inference endpoint
-  - Accepts employee feature vector, returns attrition probability + SHAP attributions
-  - Scales to zero when idle (key to cost target)
-- [ ] Integrate prediction endpoint into the React/Node.js HR dashboard:
-  - Risk score badge on employee profile
-  - Team-level risk overview on dashboard
-  - SHAP waterfall chart showing why each employee is flagged
-- [ ] Implement automated early-warning email alerts for high flight-risk employees
-  - Threshold: probability > 0.7 (configurable per company)
-  - Alert goes to HR manager, not the employee
-- [ ] Add data export pipeline from HR app → GCS (with DLP scan)
-
-### Phase 6: Testing, Evaluation & Final Documentation
-
-- [ ] End-to-end system testing:
-  - HR app → data export → DLP scan → GCS → BigQuery → model prediction → dashboard display
-- [ ] Cost audit:
-  - Run the system for one billing cycle under realistic load
-  - Document actual GCP costs vs. LKR 10,000/month target
-- [ ] User Acceptance Testing (UAT):
-  - Recruit simulated SME HR managers (5–10 participants)
-  - Define task scenarios: "Identify the three highest-risk employees and explain why"
-  - Measure task completion rate and time
-- [ ] System Usability Scale (SUS) evaluation:
-  - Standard 10-item questionnaire (Brooke, 1996)
-  - Target: > 80 (rated "Excellent" on Bangor et al.'s adjective scale)
-- [ ] Thesis documentation:
-  - Chapter 1: Introduction and Research Gap
-  - Chapter 2: Literature Review
-  - Chapter 3: Methodology (Design Science Research — Hevner et al., 2004)
-  - Chapter 4: System Design and Implementation
-  - Chapter 5: Data Strategy and ML Pipeline
-  - Chapter 6: Results and Evaluation
-  - Chapter 7: Discussion, Limitations, and Future Work
-- [ ] Final defense preparation
+| Milestone | Date | Weight |
+|---|---|---|
+| Final Report | 31 Aug 2026 | 30% |
+| Presentation & demo | 02–09 Sep 2026 | 30% |
+| Supervisor review | ≥ 1 week before LMS submission | — |
+| Turnitin check | Before submission | — |
 
 ---
 
@@ -824,10 +855,25 @@ These are properties of the available data, not bugs. They bound what can be cla
 
 1. **Small N for the local model.** 230 records, ~33 positives. The 0.94 is reported as a *repeated cross-validation mean with seed range* (0.93–0.94) precisely because a single split would be unstable. It is encouraging, not definitive.
 2. **Construct, not behaviour.** Both models predict turnover *intention* (composite ≥ 3.5), not observed resignations (intention–behaviour gap, Griffeth et al. 2000). Results are a flight-risk proxy.
-3. **Feature provenance differs by model.** The transfer model is limited to the 4 features shared with the international data (dominated by `Age`). The local model's 8 constructs are **survey-sourced** — in production their natural input is the planned Dialogflow "Pulse Check" weekly survey, *not* the operational HR data (attendance/leave/payroll). The two models therefore target different deployment paths.
+3. **Feature provenance differs by model.** The transfer model is limited to the 4 features shared with the international data (dominated by `Age`). The local model's 8 constructs are **survey-sourced** — in production their input is the in-app weekly **Pulse Check** (live since June 29, 2026; see §8), *not* the operational HR data (attendance/leave/payroll). The two models therefore target different deployment paths.
 4. **Base-rate mismatch (transfer model).** International training prevalence ~42% vs SL 14.3%; thresholds are tuned on a held-out split and the full metric suite (P/R/F1/ROC-AUC/PR-AUC + confusion matrix) is reported at each operating point, never recall alone.
+5. **Label-shift confound in the transfer experiment.** The transfer model trains on observed attrition (Saudi/Russian) but is validated on intention ≥ 3.5 (SL). The weak 0.64 therefore conflates cross-cultural domain shift with behaviour-vs-intention label shift. Name it explicitly in the thesis; the practical conclusion (local data is required) holds under either component, but the claim must be worded precisely.
+6. **Common method variance may inflate the 0.94.** The local model's 8 predictor constructs and the intention target come from the same survey instrument, same respondents, same sitting (Podsakoff et al. 2003). Pending audit P1 (leakage + CMB checks, fold-level CIs, calibration), treat 0.94 as an upper bound.
 
 **Implications for the thesis.** Lead with the transfer-vs-local comparison as the empirical contribution, supported by the framework, methodology, cost architecture, and production HR platform. Do **not** claim a single universal ">80% recall" headline. The honest path to an even stronger result is obtaining real Sri Lankan *attrition* (not intention) data from a partner SME — noted as future work.
+
+### Evaluation hardening (from the 5 July 2026 research audit)
+
+| Audit item | Defends |
+|---|---|
+| P1 — leakage/CMB audit | The 0.94 headline |
+| P2 — synthetic ablation | RQ3 — currently has **no dedicated experiment** |
+| P3 — baseline comparison | "Why Random Forest?" viva question |
+| P4 — threshold sensitivity | The ≥ 3.5 binarization choice |
+| P5 — fairness subgroup analysis | Age dominance in the transfer model + LO2 marks |
+| P6 — measured-vs-estimated cost discipline | RQ2 |
+
+Full detail in `created_docs/Audit_and_FineTuning_Plan.md`.
 
 ---
 
@@ -835,7 +881,7 @@ These are properties of the available data, not bugs. They bound what can be cla
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| **Recall < 80% on Sri Lanka validation** | Medium | High | Tune hyperparameters, try gradient boosting (XGBoost/LightGBM) as fallback, engineer additional features from BigQuery, consider ensemble approach |
+| **Headline results weaken under audit** (0.94 inflated by CMB/leakage; transfer claim over-read) | Medium | High | Audit P1 scheduled July 2026: fold-internal resampling verification, ET-item/construct overlap check, fold-level CIs, calibration curve. Thesis wording reframed around the transfer-vs-local contrast with the label-shift confound named explicitly (§12). |
 | **No real Sri Lankan company data contributed** | High | Medium | The validation set (PLoS ONE 230 records) provides real Sri Lankan signal. The pipeline is designed to accept partner data later — the research contribution is the framework and methodology, not dependent on a single dataset. |
 | **GCP cost exceeds target** | Low | Medium | Serverless architecture inherently limits cost. BigQuery free tier covers most queries. Cloud Run scales to zero. Monitor billing alerts at USD 5 and USD 10 thresholds. |
 | **PDPA compliance gap** | Low | High | Cloud DLP scan before every upload. PII stripping at database layer. Audit trail on all exports. No personal identifiers in model features. |
@@ -843,6 +889,9 @@ These are properties of the available data, not bugs. They bound what can be cla
 | **Model performs well on IBM but poorly on Sri Lanka** | Medium | High | IBM data is synthetic and not representative. Sri Lanka validation is the primary target — IBM benchmark is secondary. If there's a gap, investigate which features transfer and which don't. |
 | **SUS < 80** | Medium | Medium | Iterate on dashboard UX before final evaluation. Test with 2–3 users first (pilot), incorporate feedback, then run formal evaluation. The HR app is already production-grade — the risk is in how predictions/explanations are presented. |
 | **Viva questions about synthetic data validity** | Medium | Medium | The key defense: synthetic data has weight 0.5 (lowest) and is generated from coefficients fitted on 2,550 real records. The model is primarily trained on real international data. Synthetic data fills feature gaps (attendance, leave) that real datasets lack. |
+| **Ethics approval for SUS/Pulse Check delayed** | Medium | Medium | Start the KIU approval process immediately (P7); SUS study gated on it. Pulse Check design is already privacy-preserving (employees never see their own score; manager access is permission-gated). |
+| **Project Diary/Logbook not maintained in required format** | High | Medium | Required by guidelines §7 and the final submission checklist. Assemble in August (P11) from `masters_plan.md`, git history, and supervisor meeting notes. |
+| **RQ3 left unanswered** | Medium | High | One ablation run (P2) on the existing pipeline answers it; scheduled July 2026. |
 
 ---
 
@@ -1052,6 +1101,6 @@ Future additions for Phase 3:
 
 ---
 
-*Last updated: June 29, 2026*
-*Current phase: Phase 4 — GCP deployment **and HR-app integration, both live on dev**. The transfer-vs-local evaluation is complete (§12); both models are served from a live, IAM-locked Cloud Run endpoint (`simpalahr-ml-dev` in `kpi-uat`) with GCS-stored models and a monthly retrain Job + Scheduler (§8, `ml_service/`); and the production HR app (`Mad-marketing-git/HR`) now calls the inference service and surfaces an Attrition Risk card, verified end-to-end (§8, PRs #207/#208). The cold-start known-issue is fixed (PR #210, live). The **Pulse Check** — the lightweight in-app weekly survey that auto-produces the 8 constructs (chosen over a full Dialogflow CX agent to keep the cost thesis) — is **merged + live on dev** (PRs #211 backend / #212 frontend), verified end-to-end. Next: Cloud DLP + BigQuery, real actual-attrition data, and the thesis writeup.*
-*Next milestone: wire the HR app (`hr_base_system`) to call `/predict` and surface risk in the UI; build the Dialogflow Pulse Check that produces the 8 live construct inputs; add Cloud DLP + BigQuery; then collect real Sri Lankan actual-attrition data from a partner SME.*
+*Last updated: July 5, 2026*
+*Current phase: Phase 5 complete — Interim Report submitted (June 2026) and full research audit done (July 5, 2026; `created_docs/Audit_and_FineTuning_Plan.md`). Everything is deployed and live on dev: both models served from the IAM-locked Cloud Run endpoint (`simpalahr-ml-dev` in `kpi-uat`) with GCS-stored models and a monthly retrain Job + Scheduler (§8, `ml_service/`); the production HR app (`Mad-marketing-git/HR`) calls the inference service and surfaces the Attrition Risk card (PRs #207/#208, cold-start fixed in #210); and the in-app **Pulse Check** (chosen over Dialogflow CX to keep the cost thesis) auto-produces the 8 constructs (PRs #211/#212), all verified end-to-end.*
+*Next milestone: July 2026 evaluation hardening (audit P1–P7 — leakage/CMB audit of the 0.94, RQ3 synthetic ablation, baselines, threshold sensitivity, fairness audit, formal cost study, KIU ethics approval), then the August SUS study and final dissertation (due 31 Aug 2026). See §11.*
