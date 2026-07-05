@@ -746,7 +746,7 @@ plan items P1–P15) plus the fixed COM4901 final-report timeline.
 
 | # | Action | Defends / Answers | Effort |
 |---|---|---|---|
-| P1 | Leakage & common-method-bias audit of the local model: confirm SMOTETOMEK + threshold tuning are fold-internal; verify zero ET-item/construct overlap; add fold-level SD + bootstrap CI; add Brier score / reliability curve | The 0.94 headline | 1–2 days |
+| P1 | **✅ Done 5 Jul 2026** (`scripts/audit_local_model.py`). Leakage & CMB audit of the local model. Result: no leakage (0% missing → imputation is a no-op; ET items disjoint from predictors); 0.94 survives (leak-free 0.937, bootstrap 95% CI [0.88, 0.98], Brier 0.056); operating point was optimistic (nested P 0.58 / R 0.88 vs reported 0.73/0.82). | The 0.94 headline | Done |
 | P2 | RQ3 ablation: train with vs without synthetic rows; weight sensitivity (2.0/0.5 vs 1.0/1.0 vs real-only) | RQ3 (currently unanswered) | 1 day |
 | P3 | Baseline comparison: Logistic Regression + Gradient Boosting alongside Random Forest, both settings | "Why Random Forest?" viva question | 0.5–1 day |
 | P4 | Intention-threshold sensitivity: rerun SL target at ≥ 4.0 vs the current ≥ 3.5, show the transfer-vs-local contrast survives | Binarization choice | 0.5 day |
@@ -843,7 +843,7 @@ plan items P1–P15) plus the fixed COM4901 final-report timeline.
 | Model | What it does | Features | SL ROC-AUC | SL PR-AUC | Usable operating point |
 |---|---|---|---|---|---|
 | **Transfer** | Train on international attrition (Saudi+Russian) → predict SL intention | 4 shared | **0.64** | 0.29 | None — recall 0.80 needs precision ~0.15 (flags ~90% of staff) |
-| **Local** | Train + 5-fold CV *within* SL data on 8 psychometric constructs | 8 | **0.94** (range 0.93–0.94, 5 seeds) | 0.79 (baseline 0.14) | **Precision 0.73 / Recall 0.82** at threshold 0.30 (catches 27 of 33; 10 false positives) |
+| **Local** | Train + 5-fold CV *within* SL data on 8 psychometric constructs | 8 | **0.94** (5 seeds 0.93–0.94; bootstrap 95% CI [0.88, 0.98]; Brier 0.056) | 0.79 (baseline 0.14) | Optimistic **P 0.73 / R 0.82** (threshold tuned on the reported fold); honest nested **P 0.58 / R 0.88** — see §12 limitation #6 |
 
 **Interpretation.** Cross-cultural transfer of attrition patterns is weak (0.64, barely above chance); a locally-trained model on rich, same-instrument features is strong and *usable* (0.94, with a genuine early-warning operating point). This directly quantifies why Sri Lanka needs its own HR data — which is precisely the research gap that motivated the project. The "negative" transfer result is not a failure; it is the evidence.
 
@@ -858,7 +858,7 @@ These are properties of the available data, not bugs. They bound what can be cla
 3. **Feature provenance differs by model.** The transfer model is limited to the 4 features shared with the international data (dominated by `Age`). The local model's 8 constructs are **survey-sourced** — in production their input is the in-app weekly **Pulse Check** (live since June 29, 2026; see §8), *not* the operational HR data (attendance/leave/payroll). The two models therefore target different deployment paths.
 4. **Base-rate mismatch (transfer model).** International training prevalence ~42% vs SL 14.3%; thresholds are tuned on a held-out split and the full metric suite (P/R/F1/ROC-AUC/PR-AUC + confusion matrix) is reported at each operating point, never recall alone.
 5. **Label-shift confound in the transfer experiment.** The transfer model trains on observed attrition (Saudi/Russian) but is validated on intention ≥ 3.5 (SL). The weak 0.64 therefore conflates cross-cultural domain shift with behaviour-vs-intention label shift. Name it explicitly in the thesis; the practical conclusion (local data is required) holds under either component, but the claim must be worded precisely.
-6. **Common method variance may inflate the 0.94.** The local model's 8 predictor constructs and the intention target come from the same survey instrument, same respondents, same sitting (Podsakoff et al. 2003). Pending audit P1 (leakage + CMB checks, fold-level CIs, calibration), treat 0.94 as an upper bound.
+6. **Common method variance is present but not disqualifying (audit P1 resolved, 5 Jul 2026).** The local model's 8 predictor constructs and the intention target come from the same survey instrument, same respondents, same sitting (Podsakoff et al. 2003), so shared-method variance is a real concern. Audit P1 (`scripts/audit_local_model.py`, `reports/audit_local_model.json`) settled what it does and does not do: (a) **no leakage** — the construct matrix has 0% missing values so the "impute on all rows" step is a no-op (fold-internal vs all-data ROC-AUC delta = 0.0000), and the target's ET-1..4 items are a **disjoint** group from every predictor construct (no item-overlap); (b) the **0.94 ROC-AUC survives** — leak-free mean 0.937, bootstrap 95% CI [0.88, 0.98], well-calibrated (Brier 0.056); (c) the one genuine correction is the **operating point**: `train_model.py` tunes the threshold on the same out-of-fold predictions it reports P/R at, so the interim "P 0.73 / R 0.82" is optimistic — under nested threshold selection it is **P 0.58 / R 0.88**. Constructs correlate −0.43 to −0.61 with the intention composite (theoretically expected direction). **Action for the final report:** report the 0.94 with its bootstrap CI, report the nested operating point (or clearly label 0.73/0.82 as optimistic), and add a Harman's single-factor / marker-variable CMV note in Chapter 5.
 
 **Implications for the thesis.** Lead with the transfer-vs-local comparison as the empirical contribution, supported by the framework, methodology, cost architecture, and production HR platform. Do **not** claim a single universal ">80% recall" headline. The honest path to an even stronger result is obtaining real Sri Lankan *attrition* (not intention) data from a partner SME — noted as future work.
 
@@ -866,7 +866,7 @@ These are properties of the available data, not bugs. They bound what can be cla
 
 | Audit item | Defends |
 |---|---|
-| P1 — leakage/CMB audit | The 0.94 headline |
+| P1 — leakage/CMB audit ✅ **done 5 Jul** | The 0.94 headline (survives: CI [0.88, 0.98], no leakage; operating point corrected) |
 | P2 — synthetic ablation | RQ3 — currently has **no dedicated experiment** |
 | P3 — baseline comparison | "Why Random Forest?" viva question |
 | P4 — threshold sensitivity | The ≥ 3.5 binarization choice |
@@ -881,7 +881,7 @@ Full detail in `created_docs/Audit_and_FineTuning_Plan.md`.
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| **Headline results weaken under audit** (0.94 inflated by CMB/leakage; transfer claim over-read) | Medium | High | Audit P1 scheduled July 2026: fold-internal resampling verification, ET-item/construct overlap check, fold-level CIs, calibration curve. Thesis wording reframed around the transfer-vs-local contrast with the label-shift confound named explicitly (§12). |
+| **Headline results weaken under audit** (0.94 inflated by CMB/leakage; transfer claim over-read) | ~~Medium~~ Low (P1 done) | High | **Audit P1 completed 5 Jul 2026** (`scripts/audit_local_model.py`): no leakage (0% missing; ET items disjoint), 0.94 survives with bootstrap 95% CI [0.88, 0.98] and Brier 0.056. Residual: the reported operating point was optimistic (nested P 0.58 / R 0.88) — correct it in the final report. Thesis wording reframed around the transfer-vs-local contrast with the label-shift confound named explicitly (§12). |
 | **No real Sri Lankan company data contributed** | High | Medium | The validation set (PLoS ONE 230 records) provides real Sri Lankan signal. The pipeline is designed to accept partner data later — the research contribution is the framework and methodology, not dependent on a single dataset. |
 | **GCP cost exceeds target** | Low | Medium | Serverless architecture inherently limits cost. BigQuery free tier covers most queries. Cloud Run scales to zero. Monitor billing alerts at USD 5 and USD 10 thresholds. |
 | **PDPA compliance gap** | Low | High | Cloud DLP scan before every upload. PII stripping at database layer. Audit trail on all exports. No personal identifiers in model features. |

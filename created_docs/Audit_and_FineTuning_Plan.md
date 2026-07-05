@@ -95,13 +95,22 @@
 
 | # | Action | Answers / Defends | Effort |
 |---|--------|-------------------|--------|
-| P1 | **Leakage & CMB audit of the local model**: confirm resampling+threshold tuning are fold-internal; verify zero ET-item/construct overlap; add fold-level SD + bootstrap CI; add Brier/reliability curve | The 0.94 headline | 1–2 days |
+| P1 | ✅ **Done 5 Jul 2026** — Leakage & CMB audit of the local model (see results box below) | The 0.94 headline | Done |
 | P2 | **RQ3 ablation**: train with vs without synthetic rows; weight sensitivity (2.0/0.5 vs 1.0/1.0 vs real-only); report deltas | RQ3, weights choice | 1 day |
 | P3 | **Baseline table**: LogReg + Gradient Boosting beside RF, both settings | "Why RF?" viva question | 0.5–1 day |
 | P4 | **Threshold sensitivity**: rerun SL target at ≥ 4.0; show contrast survives | Binarization choice | 0.5 day |
 | P5 | **Fairness audit**: subgroup AUC/recall by gender & age band; document protected-attribute decision; add fairness paragraph + citations | LO2, ethics, Age-dominance | 1–2 days |
 | P6 | **Formal cost study**: billing export ≥ 1 month; 3–4 architecture comparison via scripted load test; hidden line items; FX note; SaaS PEPM row | RQ2 | 2–3 days spread over the month |
 | P7 | **Ethics compliance**: confirm KIU requirements for SUS + Pulse Check primary data; obtain approval/waiver before the SUS study | Guidelines §8; blocks P8 | admin, start immediately |
+
+> **P1 results (5 Jul 2026)** — `scripts/audit_local_model.py` → `reports/audit_local_model.json`, `reports/audit_local_calibration.png`.
+> The 0.94 was challenged on four fronts and survived three cleanly:
+> - **Imputation leakage: none.** The construct matrix has **0% missing values**, so `train_model.py`'s "impute on all rows before CV" step is a no-op; re-running with fold-internal imputation gives an identical AUC (delta = 0.0000).
+> - **Item-overlap leakage: none.** The target's `ET-1..4` items are a **disjoint** group from every predictor construct (confirmed in `preprocess_raw.py` `ITEM_GROUPS`). The predictor↔intention correlations (−0.43 to −0.61) are genuine + shared-method, not overlap.
+> - **Stability: strong.** Leak-free ROC-AUC mean 0.937 (5 seeds 0.929–0.943); **bootstrap 95% CI [0.88, 0.98]**; per-fold SD 0.047; PR-AUC 0.815 (vs 0.143 baseline); **Brier 0.056** (well-calibrated — the reliability curve tracks the diagonal, slightly conservative at the top bin).
+> - **The one real correction — operating point.** `train_model.py` tunes the F1-optimal threshold on the same out-of-fold predictions it then reports P/R at, so the interim **P 0.73 / R 0.82** is optimistic. Under **nested** threshold selection (tune on train folds, score on held-out fold) the honest operating point is **P 0.58 / R 0.88**. *Final-report action:* report 0.94 with its bootstrap CI, use the nested operating point (or label 0.73/0.82 as optimistic), and add a Harman's single-factor / marker-variable CMV note in Chapter 5.
+>
+> **Verdict:** the 0.94 ROC-AUC headline is defensible; the threshold-dependent precision claim needed the correction above. CMV remains a limitation to *disclose*, not a defect that invalidates the result.
 
 ### Medium-term — August 2026 (evaluation completion + writing)
 

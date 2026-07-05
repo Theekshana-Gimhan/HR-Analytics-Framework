@@ -20,6 +20,6 @@ __pycache__/
 
 # Trained model binaries (reproducible via scripts/train_model.py)
 models/
-# Generated training reports/plots (reproducible)
+# Generated training/audit reports/plots (reproducible from scripts/)
 reports/*.png
-reports/training_report.json
+reports/*.json
