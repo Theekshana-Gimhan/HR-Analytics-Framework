@@ -96,7 +96,7 @@
 | # | Action | Answers / Defends | Effort |
 |---|--------|-------------------|--------|
 | P1 | ✅ **Done 5 Jul 2026** — Leakage & CMB audit of the local model (see results box below) | The 0.94 headline | Done |
-| P2 | **RQ3 ablation**: train with vs without synthetic rows; weight sensitivity (2.0/0.5 vs 1.0/1.0 vs real-only); report deltas | RQ3, weights choice | 1 day |
+| P2 | ✅ **Done 6 Jul 2026** — RQ3 synthetic ablation + weight sensitivity + transfer-signal decomposition (see results box below) | RQ3, weights choice | Done |
 | P3 | **Baseline table**: LogReg + Gradient Boosting beside RF, both settings | "Why RF?" viva question | 0.5–1 day |
 | P4 | **Threshold sensitivity**: rerun SL target at ≥ 4.0; show contrast survives | Binarization choice | 0.5 day |
 | P5 | **Fairness audit**: subgroup AUC/recall by gender & age band; document protected-attribute decision; add fairness paragraph + citations | LO2, ethics, Age-dominance | 1–2 days |
@@ -111,6 +111,14 @@
 > - **The one real correction — operating point.** `train_model.py` tunes the F1-optimal threshold on the same out-of-fold predictions it then reports P/R at, so the interim **P 0.73 / R 0.82** is optimistic. Under **nested** threshold selection (tune on train folds, score on held-out fold) the honest operating point is **P 0.58 / R 0.88**. *Final-report action:* report 0.94 with its bootstrap CI, use the nested operating point (or label 0.73/0.82 as optimistic), and add a Harman's single-factor / marker-variable CMV note in Chapter 5.
 >
 > **Verdict:** the 0.94 ROC-AUC headline is defensible; the threshold-dependent precision claim needed the correction above. CMV remains a limitation to *disclose*, not a defect that invalidates the result.
+
+> **P2 results (6 Jul 2026)** — `scripts/ablation_synthetic.py` → `reports/ablation_synthetic.json`, `reports/ablation_synthetic.png`. Transfer model, 6 conditions × 5 seeds, fixed 230-row SL validation set (harness verified: SMOTETOMEK/seed-42 reproduces the 0.64 headline exactly). *Scope note:* this concerns the **transfer** model — the 0.94 local model uses **no** synthetic data, so it is untouched by RQ3.
+> - **RQ3 (does calibrated synthetic augmentation help?) — yes, marginally, and it is not harmful.** Class-weight path: ROC-AUC **0.821** with synthetic vs **0.788** real-only (Δ **+0.032**, |z|≈1.3 vs seed noise). SMOTETOMEK path: Δ +0.063 but within noise (|z|≈0.7). **Synthetic-only ≈ 0.53** (near random) — it carries no standalone transferable signal; it augments rather than drives.
+> - **Sample weights (2.0/0.5) are immaterial.** 2.0/0.5 vs 1.0/1.0 → Δ **−0.007** (|z|≈0.4). The ad-hoc weighting is defensible but not load-bearing — disclose it as such rather than defend it as tuned.
+> - **The "transfer" AUC is same-source, not cross-cultural.** Decomposition (class-weight, all rows): `Age`+`Gender` alone = **0.46** (below chance); `JobSatisfaction`+`WorkLifeBalance` alone = **0.83**; all four = 0.83. On the SL side JS/WLB are the survey's own constructs (CMV-linked to the intention target, per P1), so the 0.64–0.72 "transfer" number reflects same-instrument SL signal, not knowledge transferred from Saudi/Russia. Genuine cross-cultural demographic transfer is nil — which **strengthens** the "SL needs its own data" gap.
+> - **The 0.64 headline is one unstable draw.** Seed-averaged SMOTETOMEK transfer is 0.72 ± 0.10 (range 0.57–0.85); a class-weighted transfer is 0.82 ± 0.02. Per the framing decision we **keep 0.64 as the documented recipe** and recontextualise it, rather than restate the number.
+>
+> **Verdict:** RQ3 is answered — the hybrid-synthetic strategy gives a small, non-harmful lift and the model does not depend on synthetic rows or on the specific weights. The transfer result is best reported via the demographic-vs-satisfaction decomposition. See masters_plan §12 limitation #7.
 
 ### Medium-term — August 2026 (evaluation completion + writing)
 
