@@ -97,9 +97,9 @@
 |---|--------|-------------------|--------|
 | P1 | ✅ **Done 5 Jul 2026** — Leakage & CMB audit of the local model (see results box below) | The 0.94 headline | Done |
 | P2 | ✅ **Done 6 Jul 2026** — RQ3 synthetic ablation + weight sensitivity + transfer-signal decomposition (see results box below) | RQ3, weights choice | Done |
-| P3 | **Baseline table**: LogReg + Gradient Boosting beside RF, both settings | "Why RF?" viva question | 0.5–1 day |
-| P4 | **Threshold sensitivity**: rerun SL target at ≥ 4.0; show contrast survives | Binarization choice | 0.5 day |
-| P5 | **Fairness audit**: subgroup AUC/recall by gender & age band; document protected-attribute decision; add fairness paragraph + citations | LO2, ethics, Age-dominance | 1–2 days |
+| P3 | ✅ **Done 15 Aug 2026** — Baseline table: LogReg + Gradient Boosting beside RF, both settings (see results box below) | "Why RF?" viva question | Done |
+| P4 | ✅ **Done 15 Aug 2026** — Threshold sensitivity across ≥ 3.0 / 3.5 / 4.0 (see results box below) | Binarization choice | Done |
+| P5 | ✅ **Done 15 Aug 2026** — Fairness audit; rescoped to what the data supports (see results box below) | LO2, ethics, Age-dominance | Done |
 | P6 | **Formal cost study**: billing export ≥ 1 month; 3–4 architecture comparison via scripted load test; hidden line items; FX note; SaaS PEPM row | RQ2 | 2–3 days spread over the month |
 | P7 | **Ethics compliance**: confirm KIU requirements for SUS + Pulse Check primary data; obtain approval/waiver before the SUS study | Guidelines §8; blocks P8 | admin, start immediately |
 
@@ -119,6 +119,51 @@
 > - **The 0.64 headline is one unstable draw.** Seed-averaged SMOTETOMEK transfer is 0.72 ± 0.10 (range 0.57–0.85); a class-weighted transfer is 0.82 ± 0.02. Per the framing decision we **keep 0.64 as the documented recipe** and recontextualise it, rather than restate the number.
 >
 > **Verdict:** RQ3 is answered — the hybrid-synthetic strategy gives a small, non-harmful lift and the model does not depend on synthetic rows or on the specific weights. The transfer result is best reported via the demographic-vs-satisfaction decomposition. See masters_plan §12 limitation #7.
+
+> **P3 results (15 Aug 2026)** — `scripts/baseline_comparison.py` → `reports/baseline_comparison.json`, `reports/baseline_comparison.png`. Three estimators, identical data/seeds/folds; GBM gets balanced `sample_weight` (it has no `class_weight`), LogReg is StandardScaler-wrapped. 5 seeds, mean ± SD. *Harness check: the local RF arm reproduces P1's leak-free 0.937 exactly.*
+>
+> | Arm | Random Forest | Logistic Regression | Gradient Boosting |
+> |---|---|---|---|
+> | **Local** (8 constructs, 5-fold CV) | **0.937 ± 0.006** | 0.823 ± 0.009 | 0.853 ± 0.016 |
+> | **Transfer** (class_weight path) | 0.821 ± 0.020 | **0.854 ± 0.003** | 0.819 ± 0.018 |
+> | **Transfer** (SMOTETOMEK, headline) | 0.718 ± 0.100 | **0.833 ± 0.005** | 0.393 ± 0.126 |
+>
+> - **The local model's RF choice is vindicated outright** — 0.937 vs 0.853 (GBM) and 0.823 (LogReg), Δ +0.084, |z| = 7.8. This is the deployed model and the 0.94 headline, so the "Why Random Forest?" question is answered where it matters. RF also has the best PR-AUC (0.790 vs 0.607 / 0.399) and Brier (0.061 vs 0.095 / 0.166).
+> - **The transfer model's RF choice is NOT vindicated.** Logistic Regression beats RF on both paths (+0.033, |z| = 2.9 on class-weight; +0.115, |z| = 2.2 on SMOTETOMEK) and is an order of magnitude more stable (SD 0.003–0.005 vs 0.020–0.100). **This corroborates P2 from a new direction:** the transfer task carries so little genuine signal that a 4-feature *linear* model matches or beats an ensemble — RF's extra capacity buys variance, not accuracy. Report it; it strengthens rather than weakens the argument that the transfer setting is signal-poor.
+> - **GBM collapses under SMOTETOMEK** (0.393 — below chance), a useful illustration that the resampling path is doing something violent to a 4-feature space.
+>
+> **Verdict:** RF is empirically the right estimator for the local model and is defended by a table rather than by assertion. For the transfer model, disclose that LogReg would be both better and steadier, and justify RF there on cross-model consistency and exact SHAP — or simply report the LogReg number alongside. *Final-report action:* add this table to Chapter 5; it closes the "chosen a priori" gap in A.4.4.
+
+> **P4 results (15 Aug 2026)** — `scripts/threshold_sensitivity.py` → `reports/threshold_sensitivity.json`, `reports/threshold_sensitivity.png`. The SL target is re-derived from `ET_composite` at each cut; the master training target (real attrition) is unchanged throughout, so only what the transfer model is *scored against* moves.
+>
+> | Cut | Positives | Local ROC-AUC | Local boot 95% CI | Transfer (cw) | Transfer (smote) | Contrast (cw / smote) |
+> |---|---|---|---|---|---|---|
+> | ≥ 3.0 | 51 (22.2%) | 0.908 ± 0.011 | [0.83, 0.95] | 0.777 | 0.693 | **+0.131 / +0.215** |
+> | **≥ 3.5 (current)** | 33 (14.3%) | **0.937 ± 0.006** | [0.88, 0.98] | 0.821 | 0.718 | **+0.116 / +0.218** |
+> | ≥ 4.0 *(indicative)* | 12 (5.2%) | 0.849 ± 0.007 | [0.68, 0.95] | 0.755 | 0.675 | **+0.095 / +0.175** |
+>
+> - **The contrast survives every cut tested** — local beats transfer by +0.095 to +0.131 (class-weight) and +0.175 to +0.218 (SMOTETOMEK). The headline finding is *not* an artefact of the 3.5 binarisation.
+> - **Only ≥ 3.0 and ≥ 3.5 clear the 20-positive reliability bar.** At ≥ 4.0 there are 12 positives (~2.4 per held-out fold) and the bootstrap CI widens to [0.68, 0.95] — reported, but explicitly labelled indicative. This is why the original "just rerun at ≥ 4.0" plan was widened to a three-point curve.
+> - **Disclose honestly:** 3.5 happens to be where the local model scores highest (0.937 vs 0.908 and 0.849). The cut was fixed long before this analysis and the *contrast* holds at every point, but a reader is entitled to see the curve rather than take the best point on trust — so present the whole table, not the peak.
+> - PR-AUC is reported against its own moving no-skill baseline at each cut (lift 3.7× / 5.5× / 8.5× for the local model); comparing raw PR-AUC across thresholds would be meaningless since the baseline *is* the prevalence.
+>
+> **Verdict:** the ≥ 3.5 binarisation is defensible and the transfer-vs-local contrast is threshold-robust. *Final-report action:* include the curve in Chapter 5 and cite it wherever the 3.5 choice is justified.
+
+> **P5 results (15 Aug 2026)** — `scripts/fairness_audit.py` → `reports/fairness_audit.json`, `reports/fairness_audit.png`. **Rescoped from the original plan, and the reason is itself the finding.**
+>
+> **Why the planned subgroup table could not be produced:**
+> - **`Age` is not a continuous variable.** It takes four values — 25 (n=204, **88.7%**), 35 (17), 45 (6), 52 (3) — almost certainly bracket midpoints from the source instrument. Age-band analysis reduces to one dominant band plus 26 people. **This also undercuts the interim report's Figure 6:** the transfer model's headline `Age` importance rests on a feature that is near-constant on the validation side. Fix the Figure 6 commentary in the final report.
+> - **The female subgroup has 2 positive cases** (2/73 = 2.7%, vs male 31/157 = 19.8%). A female ROC-AUC on two positives is noise with a decimal point, so the script refuses to print one (`MIN_POSITIVES_FOR_AUC = 10`) rather than print a meaningless number.
+>
+> **What was measurable:**
+> - **Evaluable slices show no degradation:** male ROC-AUC 0.941, age=25 ROC-AUC 0.943, overall 0.943. Where the model *can* be checked, it holds up.
+> - **Four-fifths rule FAILS on both attributes — but the two failures mean opposite things**, which is why the raw ratio alone would have been misleading:
+>   - **Gender:** selection-rate ratio 0.416 (FAIL), but the *base-rate* ratio is 0.139. The model's gap is **narrower** than the gap already in the outcomes — women are flagged at **3.0×** their own base rate vs men at 1.0×. Under differing base rates, four-fifths parity and calibration are mathematically incompatible (Kleinberg et al. 2016; Chouldechova 2017). This is a trade-off to argue, not a bug to fix.
+>   - **Age:** selection-rate ratio 0.462 vs base-rate ratio 0.574 — here the model **amplifies** the disparity (over-25s flagged at 1.33× their base rate vs 1.07×). Flagged for attention, but the group is n=26 / 6 positives, so indicative only.
+> - **Proxy test (new):** can `Gender` be recovered from the 8 constructs the deployed model uses? LogReg 5-fold CV → **ROC-AUC 0.655**. Weak but non-zero, so *"the local model excludes protected attributes"* is mostly — not entirely — true, and must be stated that way rather than as a clean defence.
+> - **Drop-and-test on the transfer model:** removing `Age`+`Gender` gives **0.825 ± 0.014** vs **0.821 ± 0.020** with them (Δ **+0.004**, |z| = 0.23). **Dropping the protected attributes costs nothing and slightly helps** — consistent with P2's finding that `Age`+`Gender` alone score 0.46 (below chance).
+>
+> **Verdict:** fairness cannot be *fully* validated on this dataset, and the reason is structural rather than an oversight. The defensible position for the thesis: (i) the deployed local model takes no protected attribute as input, with the 0.655 proxy caveat disclosed; (ii) **recommend dropping `Age`+`Gender` from the transfer model outright** — the drop-and-test shows there is no accuracy argument for keeping them; (iii) report the four-fifths results *with* the base-rate decomposition; (iv) treat subgroup validation as an explicit **deployment precondition**, not a solved problem. *Final-report action:* this supports a full ethics/fairness section (LO2) with Kleinberg/Chouldechova, Barocas & Selbst, and the EU AI Act high-risk framing — see A.3 and A.5.5.
 
 ### Medium-term — August 2026 (evaluation completion + writing)
 
