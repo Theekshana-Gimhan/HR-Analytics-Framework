@@ -348,8 +348,8 @@ Ordered by "fully evidenced and unblocked" first, so that if time runs out, what
 | # | Task | Est. | Depends on |
 |---|---|---|---|
 | ~~1~~ | ~~Ch3 Methodology~~ | ✅ **done 16 Aug** | `created_docs/dissertation/ch3_methodology.md` |
-| 2 | Ch4 Implementation | 1 day | — |
-| 3 | Ch5 §5.1–§5.9, §5.12 | 1 day | — |
+| ~~2~~ | ~~Ch4 Implementation~~ | ✅ **done 16 Aug** | `ch4_implementation.md` — 1,947 words, 4 figures |
+| ~~3~~ | ~~Ch5 Testing & Evaluation~~ | ✅ **done 16 Aug** | `ch5_evaluation.md` — 2,908 words, 6 figures, 6 tables. **§5.10 Part B still blank** — see item 5 |
 | ~~4~~ | ~~Pull GCP billing → §5.11 cost result~~ | ✅ **done 16 Aug** | `scripts/cost_analysis.py` |
 | 5 | Heuristic evaluation → §5.10 | 0.5 day | Deployed system + screenshots |
 | 6 | Ch1 Introduction | 0.5 day | — |
