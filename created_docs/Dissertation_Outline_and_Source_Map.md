@@ -354,7 +354,7 @@ Ordered by "fully evidenced and unblocked" first, so that if time runs out, what
 | 5 | Heuristic evaluation → §5.10 | 0.5 day | Deployed system + screenshots |
 | 6 | Ch1 Introduction | 0.5 day | — |
 | 7 | Ch2 Literature Review | 1.5 days | **P9 reading** |
-| 8 | Ch6 Conclusions | 0.5 day | Ch5 |
+| ~~8~~ | ~~Ch6 Conclusions~~ | ✅ **done 16 Aug** | `ch6_conclusions.md` — 1,181 words |
 | 9 | Abstract, front matter, figure captions | 0.5 day | All chapters |
 | 10 | P11 project diary / logbook | 0.5 day | — |
 | 11 | Format pass, Turnitin, export PDF + Word | 0.5 day | All |

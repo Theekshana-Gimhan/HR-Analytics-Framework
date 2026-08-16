@@ -55,7 +55,7 @@ What the audit **cannot** rule out is common-method bias in the strict sense [@p
 
 ## 5.5 Synthetic Data Ablation
 
-The third research question asks whether calibrated synthetic augmentation contributes, and whether the 2.0 and 0.5 sample weights are justified. Six conditions were run across five seeds.
+The data strategy in §3.3 rests on two design assumptions: that calibrated synthetic augmentation contributes something, and that the 2.0 and 0.5 sample weights are justified. Neither is a research question in its own right, but both underwrite the training set on which every other result depends, so both were tested rather than assumed. Six conditions were run across five seeds.
 
 **Table 5.2 — Synthetic-data ablation on the transfer model (mean ROC-AUC across five seeds)**
 
