@@ -835,15 +835,40 @@ plan items P1–P15) plus the fixed COM4901 final-report timeline.
 
 **Interpretation**: SUS > 80 = "Excellent" (Bangor et al., 2009). SUS 68 = industry average.
 
-### Metric 3: Cost < LKR 10,000/month
+### Metric 3: Cost < LKR 10,000/month — ✅ **MEASURED 16 Aug 2026** (`scripts/cost_analysis.py`)
 
-**How it will be measured**:
-1. Run the system for one full billing cycle on GCP
-2. Simulate realistic usage: 50 employees, daily attendance logging, weekly pulse checks, 100 predictions/month, 1 retraining run
-3. Export GCP billing report
-4. Document each line item and total
+**Result: LKR 4,050/month on the most conservative scenario — PASS, with ~2.5× headroom.**
 
-**Safety margin**: The estimated cost is ~LKR 140/month. Even at 10x the estimated usage, the cost stays under LKR 1,500 — well within the LKR 10,000 target.
+**Why the method changed.** The original plan (export the GCP bill for one cycle) is not usable here: `kpi-uat` is a **shared** project. It also hosts an Atlantis Terraform runner, a GitHub Actions runner dispatcher, a commission app and a KPI dashboard; the single Cloud SQL instance carries six databases of which two are ours; Artifact Registry holds three repositories. A project-level bill would charge this thesis for infrastructure it does not use. Resource-level attribution from billing data needs the *detailed* BigQuery billing export, which is enabled on **no** project on this billing account and is **not retroactive**.
+
+The method used instead is **measured usage × published unit price, attributed per resource**. This is arguably more faithful to RQ2 than a shared bill: the claim is what an SME would pay, and an SME deploys single-tenant.
+
+**Measured Cloud Run usage** (Cloud Monitoring, 120-day window, data from 23 Apr 2026):
+
+| Service | Billable instance-seconds | Requests | Cost after free tier |
+|---|---:|---:|---:|
+| `simpalahr-backend-dev` | 39,324 | 2,637 | $0.00 |
+| `simpalahr-frontend-dev` | 942 | 1,125 | $0.00 |
+| `simpalahr-ml-dev` | **150** | 14 | $0.00 |
+
+**Four scenarios** (`reports/cost_analysis.json`):
+
+| Scenario | USD/mo | LKR/mo | vs target |
+|---|---:|---:|:--|
+| A. Attributed share, free tier applied | 7.47 | 2,256 | PASS |
+| A. Attributed share, free tier ignored | 7.79 | 2,353 | PASS |
+| B. Single-tenant SME, free tier applied | 13.09 | 3,953 | PASS |
+| **B. Single-tenant SME, free tier ignored** | **13.41** | **4,050** | **PASS** |
+
+Headline the thesis on **B / no free tier** — it is the most conservative and it avoids relying on a free-tier allowance that is granted per *billing account*, not per service.
+
+**Three findings worth reporting, beyond the pass:**
+
+1. **Compute is not the cost.** Cloud Run totals ~LKR 82/month and falls entirely inside the free tier. `simpalahr-ml-dev` consumed **150 billable seconds in four months** — scale-to-zero behaving exactly as the cost thesis predicts, and direct evidence for the "Why not Vertex AI AutoML" decision.
+2. **The always-on database dominates** at LKR 2,828/month (70% of the total). The one component that *cannot* scale to zero is the one that costs money — a clean architectural finding for Ch5.
+3. **Artifact Registry is the surprise**: LKR 1,140/month for 37.7 GB of accumulated container images. That is build history, not operational data, and a retention policy would remove most of it. Report it as real but reducible.
+
+**Caveats to carry into the writeup** (all recorded in `reports/cost_analysis.json`): unit prices are rate-card, not invoice; the Cloud SQL apportionment in scenario A is by database count, which is an assumption rather than a measurement (scenario B avoids it); egress and Cloud Build are not attributable per resource in a shared project and are excluded from the headline; and **usage reflects development traffic, not a live 50-employee SME workload** — measured and modelled figures must be reported separately and never conflated.
 
 ### Headline Result: Transfer vs Local (the core empirical finding)
 

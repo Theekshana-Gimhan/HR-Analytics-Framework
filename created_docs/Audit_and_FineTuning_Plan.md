@@ -100,8 +100,8 @@
 | P3 | ✅ **Done 15 Aug 2026** — Baseline table: LogReg + Gradient Boosting beside RF, both settings (see results box below) | "Why RF?" viva question | Done |
 | P4 | ✅ **Done 15 Aug 2026** — Threshold sensitivity across ≥ 3.0 / 3.5 / 4.0 (see results box below) | Binarization choice | Done |
 | P5 | ✅ **Done 15 Aug 2026** — Fairness audit; rescoped to what the data supports (see results box below) | LO2, ethics, Age-dominance | Done |
-| P6 | **Formal cost study**: billing export ≥ 1 month; 3–4 architecture comparison via scripted load test; hidden line items; FX note; SaaS PEPM row | RQ2 | 2–3 days spread over the month |
-| P7 | **Ethics compliance**: confirm KIU requirements for SUS + Pulse Check primary data; obtain approval/waiver before the SUS study | Guidelines §8; blocks P8 | admin, start immediately |
+| P6 | ✅ **Done 16 Aug 2026** — Cost attribution study (`scripts/cost_analysis.py`). Rescoped: the planned billing export is unusable because `kpi-uat` is shared with four unrelated systems and no detailed BigQuery billing export exists (nor is one retroactive). Method used instead: **measured usage × published unit price, attributed per resource**. Result: **LKR 4,050/month on the most conservative scenario — PASS** with ~2.5× headroom. See results box below. | RQ2 | Done |
+| P7 | ✅ **Closed 16 Aug 2026 — not required.** Neither planned human-participant activity took place: the SUS study was never run and the Pulse Check was never populated with real employee responses (synthetic test data only). With no human participants and no primary data collection, Guidelines §8 is not triggered. Action is now a written ethics *statement* (Ch3 §3.9 + Appendix C), not an application. | Guidelines §8 | Done |
 
 > **P1 results (5 Jul 2026)** — `scripts/audit_local_model.py` → `reports/audit_local_model.json`, `reports/audit_local_calibration.png`.
 > The 0.94 was challenged on four fronts and survived three cleanly:
@@ -165,11 +165,23 @@
 >
 > **Verdict:** fairness cannot be *fully* validated on this dataset, and the reason is structural rather than an oversight. The defensible position for the thesis: (i) the deployed local model takes no protected attribute as input, with the 0.655 proxy caveat disclosed; (ii) **recommend dropping `Age`+`Gender` from the transfer model outright** — the drop-and-test shows there is no accuracy argument for keeping them; (iii) report the four-fifths results *with* the base-rate decomposition; (iv) treat subgroup validation as an explicit **deployment precondition**, not a solved problem. *Final-report action:* this supports a full ethics/fairness section (LO2) with Kleinberg/Chouldechova, Barocas & Selbst, and the EU AI Act high-risk framing — see A.3 and A.5.5.
 
+> **P6 results — cost attribution study (16 Aug 2026, `scripts/cost_analysis.py` → `reports/cost_analysis.json`, `reports/cost_analysis.png`)**
+>
+> - **Rescoped, and the reason is itself reportable.** The planned "export ≥ 1 month of billing" cannot answer RQ2 here: `kpi-uat` is a **shared** project — it also runs an Atlantis Terraform runner, a GitHub Actions runner dispatcher, a commission app and a KPI dashboard; the single `staging-sql-instance` carries **6 databases of which 2 are ours**; Artifact Registry holds 3 repositories. A project bill would charge the thesis for infrastructure it does not use. Resource-level attribution needs the *detailed* BigQuery billing export — **not enabled on any of the 4 projects on this billing account, and not retroactive**.
+> - **Method used instead:** measured usage (Cloud Monitoring, 120-day window, data available from 23 Apr 2026) × published unit price, attributed per resource. Defensible as the *better* method, not a fallback: RQ2 asks what an SME would pay, and an SME deploys single-tenant.
+> - **Result — PASS on all four scenarios**, headline on the most conservative: **LKR 4,050/month vs the LKR 10,000 target (~2.5× headroom)**. A: attributed share 2,256 / 2,353 (free tier applied / ignored); B: single-tenant SME 3,953 / **4,050**.
+> - **Compute is not the cost.** All three Cloud Run services total ~LKR 82/month and fall entirely inside the free tier. **`simpalahr-ml-dev` consumed 150 billable instance-seconds in four months** — scale-to-zero doing exactly what the cost thesis claims, and direct empirical support for Decision 2 ("why not Vertex AI AutoML").
+> - **The always-on database dominates**: LKR 2,828/month, ~70% of the total. The one component that cannot scale to zero is the one that costs money — a clean architectural finding.
+> - **Artifact Registry is the surprise line item**: LKR 1,140/month for **37.7 GB** of accumulated container images. Build history, not operational data; a retention policy would remove most of it. Report as real but reducible.
+> - **Caveats carried in the JSON:** rate-card not invoice prices; scenario A's Cloud SQL apportionment is by database count (an assumption, which scenario B avoids); egress and Cloud Build are not per-resource attributable in a shared project and are excluded from the headline; the always-free tier is per *billing account* so scenario A's free-tier credit is generous (another reason to headline B); and **usage is development traffic, not a 50-employee SME workload** — measured and modelled figures must never be conflated.
+>
+> **Verdict:** RQ2 is answered with a measured, script-traceable result. *Final-report action:* Ch5 §5.11 reports scenario B / no free tier as the headline, with the shared-project problem and the attribution method explained in Ch3 rather than apologised for. The three findings above are more interesting than the pass itself and should carry the section.
+
 ### Medium-term — August 2026 (evaluation completion + writing)
 
 | # | Action | Notes |
 |---|--------|-------|
-| P8 | SUS study (5–10 SME stakeholders) — *after* P7 | Already planned |
+| P8 | ⚠️ **Superseded 16 Aug 2026 — SUS study will not run.** No participants were recruited and there is no time left to do so. Replaced by a **Nielsen heuristic evaluation** over the same four task scenarios (no participants required). Ch5 §5.10 reports the SUS protocol *as designed* plus the heuristic evaluation *as executed*, and states plainly that the SUS > 80 target is **unmeasured** — neither met nor refuted — with the single-non-independent-evaluator bias disclosed | Metric 2 |
 | P9 | Literature expansion to ~40+ refs across the five missing areas (A.3); replace [4]/[6], supplement [5] | Feeds Ch2 |
 | P10 | Final dissertation: reframe transfer claim with the label-shift confound named (A.4.3 wording); add a formal **Threats to Validity** section (construct/internal/external/conclusion); DSRM mapping table (Peffers) | The intellectual core of the writeup |
 | P11 | Assemble the **Project Diary/Logbook** from masters_plan.md + git history + supervisor meeting notes | Required for final submission |
