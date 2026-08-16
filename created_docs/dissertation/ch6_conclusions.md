@@ -2,15 +2,31 @@
 
 ## 6.1 Answers to the Research Questions
 
-The primary question asked whether a serverless, cost-effective AI system can deliver actionable employee attrition predictions for Sri Lankan SMEs at enterprise-grade accuracy. **The answer is a qualified yes — but the qualification is the finding.** The serverless economics work comfortably, and accurate prediction is achievable; what does not work is obtaining that accuracy from international data. The framework is viable only where local data exists to fit it.
+Each question is answered first in a sentence, then elaborated. The wording is that of the research questions as stated in the interim report; §1.7 records how RQ1 and RQ3 evolved from the approved proposal and why.
 
-**Sub-question 1 — can a model trained on multi-source international data achieve recall above 80% when validated on Sri Lankan data?** As worded, **no**. The transfer model does reach recall of 1.000 on the Sri Lankan sample, but only by flagging 86% of the workforce at a precision of 0.167, which is not prediction in any useful sense. Its discrimination is 0.641 ROC-AUC at the reported configuration, and unstable across seeds and resampling paths. The recall target *is* met — at recall 0.879 and precision 0.580 — but by the **local** model, which is not trained on international data. The honest answer is that the objective was achieved by abandoning the premise of the question.
+**RQ1 — what are the most significant predictors of attrition for the Sri Lankan SME context, and to what extent do attrition patterns transfer from international data?**
 
-**Sub-question 2 — can the pipeline run within LKR 10,000 per month on serverless infrastructure?** **Yes**, with substantial margin: LKR 4,050 per month on the most conservative scenario measured, approximately 2.5 times inside the ceiling. The mechanism is scale-to-zero inference, evidenced by 150 billable instance-seconds across four months.
+*The significant predictors are psychometric rather than behavioural, and attrition patterns transfer barely at all.*
 
-**Sub-question 3 — can SHAP attributions produce explanations that SME managers trust and act on, measured by SUS above 80?** **Unanswered.** The explanation mechanism was built and is exercised in the interface, but the usability study was not conducted and the objective is unmeasured rather than met or refuted (§5.10). This is the clearest shortfall of the work.
+Within the Sri Lankan sample, all eight psychometric constructs relate negatively to turnover intention, with job satisfaction the strongest (r = −0.613), followed by career management (−0.571) and innovative work behaviour (−0.559). Together they support a strongly discriminating model (ROC-AUC 0.937).
 
-**Sub-question 4 — can the system handle employee PII in full compliance with the PDPA?** **Partially, and by design rather than by demonstration.** Personally identifying data is stripped at the database layer before export, access is role-gated, and every data operation is audit-logged. However, the automated pre-transfer masking specified in the design was never provisioned, and — because no real employee data was ever processed — the compliance design has not been exercised on live personal data. What this work establishes is a compliant *design*, not a compliance *result*.
+Transfer, however, is close to absent. The cross-context model reaches 0.641 at the reported configuration and is unstable — 0.718 ± 0.100 on one resampling path against 0.828 ± 0.014 on another, meaning its measured performance depends more on a preprocessing choice than on the data. Decomposition then removes most of what remains: age and gender together score **0.457, below chance**, while satisfaction items alone score 0.825 — effectively the entire model. Those satisfaction items are, on the Sri Lankan side, self-reported in the same instrument as the outcome. What looks like transferred knowledge is substantially same-source correlation. **The honest answer is that international attrition patterns do not meaningfully transfer to the Sri Lankan context on the features the two bodies of data share.**
+
+**RQ2 — to what extent can a serverless architecture reduce operational cost relative to persistent infrastructure, and can it stay within LKR 10,000 per month?**
+
+*The budget question is answered decisively; the comparative question only partially.*
+
+Measured operational cost is **LKR 4,050 per month** on the most conservative scenario, roughly 2.5 times inside the ceiling. The mechanism is demonstrated rather than asserted: the inference service consumed 150 billable instance-seconds across four months, and all compute together accounts for about LKR 82 per month, while the one component that cannot scale to zero — the always-on database — accounts for roughly 70% of total spend. That distribution is itself the answer to how serverless reduces cost: it removes the idle cost of the components that can be made stateless, and leaves untouched those that cannot.
+
+The comparison against *persistent* infrastructure is, however, argued architecturally rather than measured. The planned controlled comparison across alternative deployment topologies was not carried out, so the reduction relative to an always-on deployment is inferred from the cost structure rather than benchmarked. This is a genuine incompleteness in the answer to RQ2.
+
+**RQ3 — can a hybrid dataset combining real international data with calibrated synthetic data produce a usable classifier for a low-volume Sri Lankan environment?**
+
+*No.*
+
+The hybrid approach produced a classifier, but not a usable one. On Sri Lankan data the resulting model achieves an F1 of approximately 0.29, and reaches high recall only by flagging 86% of the workforce at a precision of 0.167. Against the criterion originally set in the proposal — F1 ≥ 80% — it fails, and so does every configuration tested. The ablation explains why: synthetic data alone performs at 0.526, indistinguishable from chance; synthetic augmentation contributes +0.032 ROC-AUC, at the edge of seed noise; and the 2.0 and 0.5 sample weights make a difference of −0.007, meaning the weighting scheme central to the data strategy is doing no measurable work.
+
+The usable classifier in this project came from local data alone, not from the hybrid. **This is the central negative result of the work, and it is more valuable than a positive one would have been**: it establishes empirically that synthetic augmentation and international borrowing cannot substitute for local data collection in this domain, which is precisely the gap the project set out to examine.
 
 ## 6.2 Contributions
 
@@ -32,7 +48,9 @@ The Sri Lankan outcome is turnover **intention**, not observed departure; every 
 
 Fairness is unvalidated for women and for employees over 25 because the sample cannot support it — two positive cases and six respectively — and gender remains partly recoverable from the deployed model's inputs at 0.655. The system should not be used on real employees without subgroup validation on an adequate sample.
 
-Usability was not measured. Cost was measured on development traffic in a shared project, not on a live fifty-employee workload. And the Pulse Check, while functional, was never populated with real responses, so its short-form reliability is unassessed.
+Usability was not measured, leaving objective O5 only partly discharged (§5.10). Cost was measured on development traffic in a shared project, not on a live fifty-employee workload, and the comparison against persistent infrastructure was argued rather than benchmarked. The Pulse Check, while functional, was never populated with real responses, so its short-form reliability is unassessed.
+
+Objective O1 required compliance with the Personal Data Protection Act. What this work establishes is a compliant **design** rather than a compliance **result**: identifying data is stripped at the database layer, access is role-gated and operations are audit-logged, but the automated pre-transfer masking specified in the architecture was never provisioned, and — because no real employee data was ever processed — none of these controls has been exercised on live personal data.
 
 ## 6.4 Future Work
 

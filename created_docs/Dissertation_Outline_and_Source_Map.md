@@ -98,6 +98,29 @@ These are the files each chapter draws on. All are in this repository.
 
 ---
 
+---
+
+## Which research questions the dissertation answers (decided 16 Aug 2026)
+
+Three different RQ sets exist across the project's documents, and they do not agree:
+
+| Document | RQ1 | RQ3 |
+|---|---|---|
+| **Proposal** (approved, Mar 2026) | Behavioural predictors from **operational** HR data | Hybrid dataset achieving **F1 ≥ 80%** |
+| **Interim** (submitted, Jun 2026) | Predictors **+ how far patterns transfer** | Hybrid dataset producing a "usable classifier" |
+| `masters_plan.md` §2 | Recall > 80% from international data | SHAP → SUS > 80 (plus a 4th RQ on PDPA) |
+
+**Decision: the dissertation answers the interim report's set**, because that is the most recent wording the supervisor and examiner have seen. The `masters_plan.md` §2 set was never submitted anywhere and must not be used — reframing the questions after the results are known is exactly what it would look like.
+
+**Two drifts are declared in Ch1 §1.7** rather than left to be discovered:
+
+1. **RQ1 moved from behavioural to psychometric predictors.** No Sri Lankan operational-attrition dataset exists, so the only local instrument available is psychometric. The behavioural pipeline was still built and awaits outcome data.
+2. **RQ3's F1 ≥ 80% criterion was replaced by a recall-primary target.** Defensible (a missed resignation costs far more than a false alarm) but it relaxed a stated numeric commitment. **Against the original criterion RQ3 fails** — hybrid F1 ≈ 0.29, local F1 0.699 — and Ch6 answers RQ3 negatively on both criteria.
+
+Note for anyone reading the audit documents: `Audit_and_FineTuning_Plan.md` uses the **interim/proposal** numbering throughout, so its "RQ3" (the synthetic-data ablation) is correct and consistent with the dissertation.
+
+---
+
 ## Front matter
 
 | Item | Status | Notes |
@@ -352,7 +375,7 @@ Ordered by "fully evidenced and unblocked" first, so that if time runs out, what
 | ~~3~~ | ~~Ch5 Testing & Evaluation~~ | ✅ **done 16 Aug** | `ch5_evaluation.md` — 2,908 words, 6 figures, 6 tables. **§5.10 Part B still blank** — see item 5 |
 | ~~4~~ | ~~Pull GCP billing → §5.11 cost result~~ | ✅ **done 16 Aug** | `scripts/cost_analysis.py` |
 | 5 | Heuristic evaluation → §5.10 | 0.5 day | Deployed system + screenshots |
-| 6 | Ch1 Introduction | 0.5 day | — |
+| ~~6~~ | ~~Ch1 Introduction~~ | ✅ **done 16 Aug** | `ch1_introduction.md` — 1,339 words, incl. §1.7 Deviations |
 | 7 | Ch2 Literature Review | 1.5 days | **P9 reading** |
 | ~~8~~ | ~~Ch6 Conclusions~~ | ✅ **done 16 Aug** | `ch6_conclusions.md` — 1,181 words |
 | 9 | Abstract, front matter, figure captions | 0.5 day | All chapters |

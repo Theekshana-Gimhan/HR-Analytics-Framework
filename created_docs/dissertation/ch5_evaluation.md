@@ -55,7 +55,7 @@ What the audit **cannot** rule out is common-method bias in the strict sense [@p
 
 ## 5.5 Synthetic Data Ablation
 
-The data strategy in §3.3 rests on two design assumptions: that calibrated synthetic augmentation contributes something, and that the 2.0 and 0.5 sample weights are justified. Neither is a research question in its own right, but both underwrite the training set on which every other result depends, so both were tested rather than assumed. Six conditions were run across five seeds.
+RQ3 asks whether a hybrid dataset — real international attrition data combined with calibrated synthetic Sri Lankan data — can produce a usable classifier for a low-volume data environment. Answering it requires testing two assumptions the data strategy rests on: that the synthetic component contributes anything, and that the 2.0 and 0.5 sample weights are doing work. Six conditions were run across five seeds.
 
 **Table 5.2 — Synthetic-data ablation on the transfer model (mean ROC-AUC across five seeds)**
 
