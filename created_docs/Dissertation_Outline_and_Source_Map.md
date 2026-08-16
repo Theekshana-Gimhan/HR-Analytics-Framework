@@ -93,6 +93,8 @@ These are the files each chapter draws on. All are in this repository.
 | `reports/fairness_audit.json` | P5 — fairness and its structural limits. |
 | `scripts/*.py` | 12 scripts; the reproducibility claim rests on these. |
 | `references/` | 17 papers on disk (21 cited in the interim). |
+| `created_docs/dissertation/references.md` | **Central keyed reference list** — 30 entries. Chapters cite `[@key]`; the build script resolves keys to IEEE numbers in order of first appearance, so P9 can expand to 40+ without touching a single in-text citation. |
+| `created_docs/dissertation/*.md` | Chapter drafts, one file per chapter. |
 
 ---
 
@@ -345,7 +347,7 @@ Ordered by "fully evidenced and unblocked" first, so that if time runs out, what
 
 | # | Task | Est. | Depends on |
 |---|---|---|---|
-| 1 | Ch3 Methodology | 1 day | — |
+| ~~1~~ | ~~Ch3 Methodology~~ | ✅ **done 16 Aug** | `created_docs/dissertation/ch3_methodology.md` |
 | 2 | Ch4 Implementation | 1 day | — |
 | 3 | Ch5 §5.1–§5.9, §5.12 | 1 day | — |
 | ~~4~~ | ~~Pull GCP billing → §5.11 cost result~~ | ✅ **done 16 Aug** | `scripts/cost_analysis.py` |

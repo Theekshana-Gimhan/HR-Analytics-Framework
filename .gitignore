@@ -23,3 +23,9 @@ models/
 # Generated training/audit reports/plots (reproducible from scripts/)
 reports/*.png
 reports/*.json
+
+# Built dissertation (reproducible from created_docs/dissertation/*.md via
+# scripts/build_dissertation.py). The Markdown chapters are the source of
+# truth; the .docx is a build artifact and would churn on every rebuild.
+# The final submission PDF/DOCX gets committed deliberately at hand-in.
+created_docs/Final_Report_COM4901_Theekshana_Gimhan.docx
