@@ -35,6 +35,20 @@ P9 can add, remove or reorder references without touching a single in-text citat
 | `punnoose2016` | R. Punnoose and P. Ajit, "Prediction of Employee Turnover in Organizations using Machine Learning Algorithms," *Int. J. Advanced Research in Artificial Intelligence*, vol. 5, no. 9, pp. 22–26, 2016. | interim |
 | `angrave2016` | D. Angrave, A. Charlwood, I. Kirkpatrick, M. Lawrence, and M. Stuart, "HR and Analytics: Why HR is Set to Fail the Big Data Challenge," *Human Resource Management Journal*, vol. 26, no. 1, pp. 1–11, 2016. | interim |
 | `kanchana2023` | L. Kanchana and R. Jayathilaka, "Factors impacting employee turnover intentions among professionals in Sri Lankan startups," *PLOS ONE*, vol. 18, no. 2, e0281729, 2023, doi: 10.1371/journal.pone.0281729. | interim |
+| `li2023` | W. Li, "A transformer-based deep learning framework to predict employee attrition," *PeerJ Computer Science*, vol. 9, e1570, 2023, doi: 10.7717/peerj-cs.1570. | **new — Ch2 §2.1/§2.3** |
+| `pavithran2025` | M. S. Pavithran and S. M. Vadivel, "Explainable attrition risk scoring for managerial retention decisions in human resource analytics," *Frontiers in Big Data*, vol. 8, 1699561, 2025, doi: 10.3389/fdata.2025.1699561. | **new — Ch2 §2.1/§2.3** |
+| `mohiuddin2023` | K. Mohiuddin, M. A. Alam, M. M. Alam, P. Welke, M. Martin, J. Lehmann, and S. Vahdati, "Retention Is All You Need," arXiv:2304.03103, 2023. | **new — Ch2 §2.2** |
+| `ilyas2026` | M. Ilyas, W. Alam, and A. Ahmad, "Breaking barriers: driving HR analytics adoption in small and medium-sized enterprises," *Evidence-based HRM: a Global Forum for Empirical Scholarship*, vol. 14, no. 1, pp. 171–191, 2026, doi: 10.1108/EBHRM-01-2024-0015. | **new — Ch2 §2.5** |
+| `bahanni2026` | K. Bahanni, Y. Fujimoto, and E. E. T. Bolt, "Contextual challenges in HR analytics adoption: an open systems perspective from HR managers in a developing country," *Personnel Review*, vol. 55, no. 2, pp. 578–598, 2026, doi: 10.1108/PR-04-2024-0375. | **new — Ch2 §2.5** |
+
+## Turnover theory, intention and cross-cultural variation
+
+| Key | Entry | Origin |
+|---|---|---|
+| `mobley1977` | W. H. Mobley, "Intermediate linkages in the relationship between job satisfaction and employee turnover," *Journal of Applied Psychology*, vol. 62, no. 2, pp. 237–240, 1977. | **new — Ch2 §2.6** |
+| `steel1984` | R. P. Steel and N. K. Ovalle, "A review and meta-analysis of research on the relationship between behavioral intentions and employee turnover," *Journal of Applied Psychology*, vol. 69, no. 4, pp. 673–686, 1984. | **new — Ch2 §2.6** |
+| `ajzen1991` | I. Ajzen, "The theory of planned behavior," *Organizational Behavior and Human Decision Processes*, vol. 50, no. 2, pp. 179–211, 1991. | **new — Ch2 §2.6** |
+| `fischer2009` | R. Fischer and A. Mansell, "Commitment across cultures: A meta-analytical approach," *Journal of International Business Studies*, vol. 40, no. 8, pp. 1339–1358, 2009, doi: 10.1057/jibs.2009.14. | **new — Ch2 §2.3** |
 
 ## Machine learning method
 
@@ -44,9 +58,17 @@ P9 can add, remove or reorder references without touching a single in-text citat
 | `breiman2001` | L. Breiman, "Random Forests," *Machine Learning*, vol. 45, no. 1, pp. 5–32, 2001. | **new — Ch3** |
 | `chawla2002` | N. V. Chawla, K. W. Bowyer, L. O. Hall, and W. P. Kegelmeyer, "SMOTE: Synthetic Minority Over-sampling Technique," *Journal of Artificial Intelligence Research*, vol. 16, pp. 321–357, 2002. | interim |
 | `batista2004` | G. E. A. P. A. Batista, R. C. Prati, and M. C. Monard, "A Study of the Behavior of Several Methods for Balancing Machine Learning Training Data," *ACM SIGKDD Explorations Newsletter*, vol. 6, no. 1, pp. 20–29, 2004. | **new — Ch3** |
-| `lundberg2017` | S. M. Lundberg and S.-I. Lee, "A Unified Approach to Interpreting Model Predictions," in *Advances in Neural Information Processing Systems (NeurIPS)*, 2017, pp. 4765–4774. | interim |
 | `efron1993` | B. Efron and R. J. Tibshirani, *An Introduction to the Bootstrap*. New York: Chapman & Hall, 1993. | **new — Ch3** |
+| `morenotorres2012` | J. G. Moreno-Torres, T. Raeder, R. Alaiz-Rodríguez, N. V. Chawla, and F. Herrera, "A unifying view on dataset shift in classification," *Pattern Recognition*, vol. 45, no. 1, pp. 521–530, 2012, doi: 10.1016/j.patcog.2011.06.019. | **new — Ch2 §2.3** |
 | `ibm2017` | IBM, "IBM HR Analytics Employee Attrition & Performance Dataset," Kaggle, 2017. | interim |
+
+## Explainable AI
+
+| Key | Entry | Origin |
+|---|---|---|
+| `lundberg2017` | S. M. Lundberg and S.-I. Lee, "A Unified Approach to Interpreting Model Predictions," in *Advances in Neural Information Processing Systems (NeurIPS)*, 2017, pp. 4765–4774. | interim |
+| `lundberg2020` | S. M. Lundberg et al., "From local explanations to global understanding with explainable AI for trees," *Nature Machine Intelligence*, vol. 2, pp. 56–67, 2020, doi: 10.1038/s42256-019-0138-9. | **new — Ch2 §2.2** |
+| `rudin2019` | C. Rudin, "Stop explaining black box machine learning models for high stakes decisions and use interpretable models instead," *Nature Machine Intelligence*, vol. 1, pp. 206–215, 2019. | **new — Ch2 §2.2** |
 
 ## Research methodology
 
@@ -61,7 +83,9 @@ P9 can add, remove or reorder references without touching a single in-text citat
 | Key | Entry | Origin |
 |---|---|---|
 | `ribeiro2015` | M. Ribeiro, K. Grolinger, and M. A. M. Capretz, "MLaaS: Machine Learning as a Service," in *Proc. IEEE ICMLA*, 2015, pp. 896–902. | interim |
-| `kodakandla2021` | N. Kodakandla, "Serverless Architectures: A Comparative Study of Performance, Scalability, and Cost in Cloud-native Applications," *Iconic Research and Engineering Journals*, vol. 5, no. 2, pp. 136–150, 2021. | interim — **P9: weak, replace** |
+| `adzic2017` | G. Adzic and R. Chatley, "Serverless computing: economic and architectural impact," in *Proc. 11th Joint Meeting on Foundations of Software Engineering (ESEC/FSE)*, Paderborn, Germany, 2017, pp. 884–889, doi: 10.1145/3106237.3117767. | **new — Ch2 §2.4; replaces `kodakandla2021`** |
+| `eivy2017` | A. Eivy and J. Weinman, "Be wary of the economics of 'serverless' cloud computing," *IEEE Cloud Computing*, vol. 4, no. 2, pp. 6–12, 2017. | **new — Ch2 §2.4** |
+| `jonas2019` | E. Jonas et al., "Cloud programming simplified: A Berkeley view on serverless computing," arXiv:1902.03383, 2019. | **new — Ch2 §2.4** |
 | `googlecloud2024vertex` | Google Cloud, "Vertex AI: Train and Deploy ML Models," Google LLC, 2024. | interim — **P9: supplement** |
 | `charney2024` | B. Charney, "HR Software Pricing Guide: How Much Does HR Software Cost?," People Managing People, 2024. | interim — **P9: weak, replace** |
 
@@ -79,15 +103,27 @@ P9 can add, remove or reorder references without touching a single in-text citat
 |---|---|---|
 | `kleinberg2016` | J. Kleinberg, S. Mullainathan, and M. Raghavan, "Inherent Trade-Offs in the Fair Determination of Risk Scores," arXiv:1609.05807, 2016. | **new — Ch5 §5.8** |
 | `chouldechova2017` | A. Chouldechova, "Fair Prediction with Disparate Impact: A Study of Bias in Recidivism Prediction Instruments," *Big Data*, vol. 5, no. 2, pp. 153–163, 2017. | **new — Ch5 §5.8** |
+| `barocas2016` | S. Barocas and A. D. Selbst, "Big data's disparate impact," *California Law Review*, vol. 104, pp. 671–732, 2016. | **new — Ch2 §2.7** |
+| `raghavan2020` | M. Raghavan, S. Barocas, J. Kleinberg, and K. Levy, "Mitigating bias in algorithmic hiring: Evaluating claims and practices," in *Proc. Conf. Fairness, Accountability, and Transparency (FAT\*)*, Barcelona, Spain, 2020, pp. 469–481. | **new — Ch2 §2.7** |
 
 ---
 
 ## Status
 
-**30 entries** (21 from the interim, 9 added for Ch3/Ch5).
+**46 entries** (21 from the interim, 9 added for Ch3/Ch5, 16 added for Ch2 under P9).
 Run `python scripts/build_dissertation.py` to re-check — it prints the parsed count,
 which keys are cited, and which are defined but not yet used.
-**P9 target: 40+.** The gaps are cross-context transfer of HR models (Ch2 §2.3, the section that
-carries the thesis), synthetic tabular data generation, and fairness in algorithmic HR beyond the
-two impossibility results above. Three interim references are flagged for replacement or
-supplement and should not survive into the final list unchanged.
+
+**P9 target of 40+ is met.** Every entry added on 22 August 2026 was checked against a
+publisher, arXiv or indexing record before being written here; nothing is cited from recall.
+Two caveats stand:
+
+- `kodakandla2021` has been **removed**, not merely deprecated — the audit flagged it as a weak
+  source and `adzic2017`, `eivy2017` and `jonas2019` now carry the serverless-economics claims.
+  Its one in-text use, in Ch1 §1.1, was rewritten to cite `jonas2019`.
+- `charney2024` (a vendor pricing guide, not peer-reviewed) survives because the claim it
+  supports — prevailing per-employee-per-month market pricing — is precisely what a pricing
+  guide is competent to evidence. It should not be used for any analytical claim.
+
+`ilyas2026` and `bahanni2026` carry 2026 issue dates from their publishers although both were
+available online in 2024; the publisher's date of record is used.

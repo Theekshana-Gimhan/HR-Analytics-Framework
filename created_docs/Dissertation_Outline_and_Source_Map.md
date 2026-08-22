@@ -24,7 +24,7 @@ Nothing here is prose to be pasted into the thesis. It is the map that makes eac
 | **READY** | Evidence exists and is frozen. Draft immediately. |
 | **LIFT** | Adapt and expand from the Interim Report. Needs rewriting, not copying (Turnitin sees self-overlap). |
 | **NEW** | No existing text, but no blocker either. Write from scratch. |
-| **P9** | Needs the literature expansion (21 → 40+ IEEE refs) before it can be written properly. |
+| **P9** | ✅ **Closed 22 Aug 2026** — 46 verified IEEE references, all cited. |
 | **SUBSTITUTED** | The planned method could not be executed. A justified alternative is reported in its place, with the substitution disclosed. |
 
 ---
@@ -93,7 +93,7 @@ These are the files each chapter draws on. All are in this repository.
 | `reports/fairness_audit.json` | P5 — fairness and its structural limits. |
 | `scripts/*.py` | 12 scripts; the reproducibility claim rests on these. |
 | `references/` | 17 papers on disk (21 cited in the interim). |
-| `created_docs/dissertation/references.md` | **Central keyed reference list** — 30 entries. Chapters cite `[@key]`; the build script resolves keys to IEEE numbers in order of first appearance, so P9 can expand to 40+ without touching a single in-text citation. |
+| `created_docs/dissertation/references.md` | **Central keyed reference list** — **46 entries, all 46 cited** (no orphans). Chapters cite `[@key]`; the build script resolves keys to IEEE numbers in order of first appearance. P9 target of 40+ met on 22 Aug 2026. |
 | `created_docs/dissertation/*.md` | Chapter drafts, one file per chapter. |
 
 ---
@@ -157,7 +157,13 @@ Note for anyone reading the audit documents: `Audit_and_FineTuning_Plan.md` uses
 
 ## Chapter 2 — Literature Review · 2,200 words
 
-The weakest chapter today: the interim carried a "(Status)" heading and 21 references against a target of 40+. This is **P9**, and it is the one chapter where drafting is genuinely blocked on new reading.
+**✅ DRAFTED 22 August 2026 — 2,376 words. P9 closed: 46 references, up from 30.**
+
+Every one of the 16 references added for this chapter was verified against a publisher, arXiv or indexing record before being written into `references.md`; none was cited from recall. `kodakandla2021` was removed as a weak source (its single use in Ch1 §1.1 now cites `jonas2019`); `charney2024` was retained but restricted to the market-pricing claim a vendor pricing guide is competent to support.
+
+Structure as delivered: §2.3 is built as a three-step argument — the ML literature *assumes* transfer, the dataset-shift and cross-cultural literatures *predict* it should partly fail, and almost nobody has *tested* it — so Chapter 5's negative result lands as a finding rather than a defect. §2.6 was strengthened beyond the original plan: Mobley (1977), Steel & Ovalle (1984, r ≈ 0.50) and Ajzen (1991) now *justify* turnover intention as a construct rather than merely apologising for it, which repairs a gap that would otherwise have left every local-model claim in Ch5/Ch6 resting on an undefended proxy. §2.5.1 grounds Nielsen & Molich and Bangor et al. ahead of the Ch5 substitution, as flagged below.
+
+*Original note, retained for the record:* the weakest chapter today: the interim carried a "(Status)" heading and 21 references against a target of 40+. This is **P9**, and it is the one chapter where drafting is genuinely blocked on new reading.
 
 | § | Section | Words | Source | Status |
 |---|---|---:|---|---|
@@ -353,14 +359,14 @@ Examiners mark against these. Worth checking off before submission.
 |---|---|
 | LO1 — Develop a proposal to solve a domain problem | Ch1 (all) |
 | **LO2 — Ethical / professional issues** | Ch3 §3.9 (PDPA, privacy by design), Ch5 §5.8 (fairness audit), Appendix C (ethics approval) |
-| LO3 — Literature survey | Ch2 (all) — **the weakest coverage today** |
+| LO3 — Literature survey | Ch2 (all) — ✅ **covered; 46 verified references** |
 | LO4 — Methodology to design and implement | Ch3, Ch4 |
 | LO5 — Implement, test, evaluate, validate | Ch4, Ch5 |
 | LO6 — Written and oral communication | The document itself; the September viva |
 
 **LO2 is unusually well covered** — the fairness audit and the PDPA design work together to answer it with evidence rather than assertion. That is worth foregrounding, because most projects answer LO2 with a paragraph of good intentions.
 
-**LO3 is the exposure.** P9 is not optional.
+**LO3 was the exposure. It is now closed** — Ch2 drafted 22 Aug 2026 against 46 verified references.
 
 ---
 
@@ -376,7 +382,7 @@ Ordered by "fully evidenced and unblocked" first, so that if time runs out, what
 | ~~4~~ | ~~Pull GCP billing → §5.11 cost result~~ | ✅ **done 16 Aug** | `scripts/cost_analysis.py` |
 | 5 | Heuristic evaluation → §5.10 | 0.5 day | Deployed system + screenshots |
 | ~~6~~ | ~~Ch1 Introduction~~ | ✅ **done 16 Aug** | `ch1_introduction.md` — 1,339 words, incl. §1.7 Deviations |
-| 7 | Ch2 Literature Review | 1.5 days | **P9 reading** |
+| ~~7~~ | ~~Ch2 Literature Review~~ | ~~1.5 days~~ | ✅ **Done 22 Aug 2026** — 2,376 words, P9 closed |
 | ~~8~~ | ~~Ch6 Conclusions~~ | ✅ **done 16 Aug** | `ch6_conclusions.md` — 1,181 words |
 | 9 | Abstract, front matter, figure captions | 0.5 day | All chapters |
 | 10 | P11 project diary / logbook | 0.5 day | — |
@@ -395,7 +401,7 @@ That totals roughly **8 working days against an ~8-day window** to the superviso
 | **Metric 2 is unmeasured** — an objective stated in Ch1 has no numeric result | Marks lost if it looks like a silently abandoned promise | Report it as an explicit substitution in §5.10: protocol as designed, heuristic evaluation as executed, both disclosures stated. Carry it into Ch6 §6.3 and future work. |
 | **The Pulse Check could be read as having had real users** | A factual overstatement that would undermine the ethics and PDPA sections | Fix the wording at every mention (§4.7, §3.9, abstract). Also correct "live on dev" in `masters_plan.md` so the source record stops feeding the wrong phrasing. |
 | **Cost is measured at development traffic, not SME workload** | Overstates the cost claim if not qualified | Report measured billing *and* the modelled 50-employee workload separately; never present one as the other. |
-| **P9 literature is 21 of 40+ refs** | Directly damages LO3 | Start the reading in parallel with Ch3/Ch4 drafting, not after. |
+| ~~**P9 literature is 21 of 40+ refs**~~ | ~~Directly damages LO3~~ | ✅ **Closed 22 Aug 2026** — 46 verified references, all cited, Ch2 drafted. |
 | **P11 logbook is a mandatory submission item** | Incomplete submission bundle | Reconstruct from git history and `masters_plan.md` §10–11; half a day. |
 | Turnitin flags interim self-overlap | Delay at submission | Rewrite lifted sections rather than pasting; check early, not on the 31st. |
 

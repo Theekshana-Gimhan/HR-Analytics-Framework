@@ -182,7 +182,7 @@
 | # | Action | Notes |
 |---|--------|-------|
 | P8 | ⚠️ **Superseded 16 Aug 2026 — SUS study will not run.** No participants were recruited and there is no time left to do so. Replaced by a **Nielsen heuristic evaluation** over the same four task scenarios (no participants required). Ch5 §5.10 reports the SUS protocol *as designed* plus the heuristic evaluation *as executed*, and states plainly that the SUS > 80 target is **unmeasured** — neither met nor refuted — with the single-non-independent-evaluator bias disclosed | Metric 2 |
-| P9 | Literature expansion to ~40+ refs across the five missing areas (A.3); replace [4]/[6], supplement [5] | Feeds Ch2 |
+| P9 | ✅ **Closed 22 Aug 2026** — 46 verified refs (from 30), all cited, no orphans. [6] `kodakandla2021` **removed** and replaced by `adzic2017`/`eivy2017`/`jonas2019`; [4] `charney2024` retained but restricted to the market-pricing claim; [5] `googlecloud2024vertex` supplemented by `jonas2019`. Ch2 drafted, 2,376 words. Every added reference was verified against a publisher/arXiv/indexing record — none cited from recall. | Fed Ch2 |
 | P10 | Final dissertation: reframe transfer claim with the label-shift confound named (A.4.3 wording); add a formal **Threats to Validity** section (construct/internal/external/conclusion); DSRM mapping table (Peffers) | The intellectual core of the writeup |
 | P11 | Assemble the **Project Diary/Logbook** from masters_plan.md + git history + supervisor meeting notes | Required for final submission |
 | P12 | Fix the small textual defects: abstract cost wording, "barely above chance", SLBFE precision, table rendering check | 0.5 day |
