@@ -73,6 +73,15 @@ TITLE_PAGE = {
 
 # Assembly order. A chapter absent from disk is skipped with a notice rather
 # than failing the build, so partial drafts still produce a readable document.
+
+# Front matter, rendered between the title page and the table of contents.
+# Deliberately excluded from the body word count: the 10,000-word minimum is
+# counted on the chapters, so keeping the abstract out of it keeps the reported
+# figure conservative rather than flattering.
+FRONT_MATTER = [
+    'abstract.md',
+]
+
 CHAPTERS = [
     'ch1_introduction.md',
     'ch2_literature_review.md',
@@ -376,13 +385,25 @@ def main() -> None:
     add_page_numbers(doc)
     build_title_page(doc)
 
-    doc.add_heading('Table of Contents', level=1)
-    add_toc(doc)
-    doc.add_page_break()
-
     print('=' * 74)
     print('BUILDING DISSERTATION')
     print('=' * 74)
+
+    # Front matter first, counted separately so it stays out of the body total.
+    front = {'words': 0, 'chapters': 0}
+    for name in FRONT_MATTER:
+        path = SRC / name
+        if not path.exists():
+            print('  skip   %-28s (not drafted yet)' % name)
+            continue
+        before = front['words']
+        render(doc, path.read_text(encoding='utf8'), cites, front)
+        print('  ok     %-28s %5d words (front matter)' % (name, front['words'] - before))
+        doc.add_page_break()
+
+    doc.add_heading('Table of Contents', level=1)
+    add_toc(doc)
+    doc.add_page_break()
 
     found = 0
     for name in CHAPTERS:
