@@ -29,3 +29,8 @@ reports/*.json
 # truth; the .docx is a build artifact and would churn on every rebuild.
 # The final submission PDF/DOCX gets committed deliberately at hand-in.
 created_docs/Final_Report_COM4901_Theekshana_Gimhan.docx
+
+# Playwright Agent CLI working directory. Holds page snapshots, console logs,
+# screenshots and browser storage state -- the last of which can contain live
+# session tokens for the dev deployment. Never commit.
+.playwright-cli/
