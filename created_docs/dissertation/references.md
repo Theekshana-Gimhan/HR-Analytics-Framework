@@ -95,6 +95,7 @@ P9 can add, remove or reorder references without touching a single in-text citat
 |---|---|---|
 | `brooke1996` | J. Brooke, "SUS — A Quick and Dirty Usability Scale," in *Usability Evaluation in Industry*. London: Taylor & Francis, 1996, pp. 189–194. | interim |
 | `nielsen1990` | J. Nielsen and R. Molich, "Heuristic Evaluation of User Interfaces," in *Proc. ACM CHI '90*, 1990, pp. 249–256. | **new — Ch5 §5.10** |
+| `nielsen1994` | J. Nielsen, "Heuristic Evaluation," in *Usability Inspection Methods*, J. Nielsen and R. L. Mack, Eds. New York: John Wiley & Sons, 1994, pp. 25–62. | **new — Ch5 §5.10 (0–4 severity scale)** |
 | `bangor2009` | A. Bangor, P. T. Kortum, and J. T. Miller, "Determining What Individual SUS Scores Mean: Adding an Adjective Rating Scale," *Journal of Usability Studies*, vol. 4, no. 3, pp. 114–123, 2009. | **new — Ch5 §5.10** |
 
 ## Fairness and algorithmic ethics

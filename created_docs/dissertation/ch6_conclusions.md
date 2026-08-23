@@ -48,7 +48,7 @@ The Sri Lankan outcome is turnover **intention**, not observed departure; every 
 
 Fairness is unvalidated for women and for employees over 25 because the sample cannot support it — two positive cases and six respectively — and gender remains partly recoverable from the deployed model's inputs at 0.655. The system should not be used on real employees without subgroup validation on an adequate sample.
 
-Usability was not measured, leaving objective O5 only partly discharged (§5.10). Cost was measured on development traffic in a shared project, not on a live fifty-employee workload, and the comparison against persistent infrastructure was argued rather than benchmarked. The Pulse Check, while functional, was never populated with real responses, so its short-form reliability is unassessed.
+Usability was not *measured*: the System Usability Scale study did not run, so the "above 80" target is neither met nor refuted and objective O5 remains only partly discharged. A heuristic inspection was substituted and did return findings (§5.10), but it was conducted by two evaluators of whom the only human is the system's author, which is materially weaker than the independence the method assumes. Cost was measured on development traffic in a shared project, not on a live fifty-employee workload, and the comparison against persistent infrastructure was argued rather than benchmarked. The Pulse Check, while functional, was never populated with real responses, so its short-form reliability is unassessed.
 
 Objective O1 required compliance with the Personal Data Protection Act. What this work establishes is a compliant **design** rather than a compliance **result**: identifying data is stripped at the database layer, access is role-gated and operations are audit-logged, but the automated pre-transfer masking specified in the architecture was never provisioned, and — because no real employee data was ever processed — none of these controls has been exercised on live personal data.
 
@@ -58,7 +58,9 @@ Objective O1 required compliance with the Personal Data Protection Act. What thi
 
 **Validate the Pulse Check short form.** Once roughly fifty real responses exist, the internal consistency of the two-item construct pairs can be assessed, which would either defend the short-form design empirically or justify lengthening it.
 
-**Conduct the usability study.** The protocol is fully specified in §5.10 and is directly executable; completing it would close the one objective this work leaves unanswered.
+**Conduct the usability study.** The protocol is fully specified in §5.10 and is directly executable with independent evaluators; completing it would close the one objective this work leaves unanswered.
+
+**Build the workforce risk view, and an onboarding path.** The heuristic inspection found that the system's primary question — *which of my employees should I worry about?* — has no interface (§5.10, F3), and that a first-time user is given no place to start (F13). Both are additions rather than corrections, and both matter more than they appear: §2.5 identifies effort expectancy and facilitating conditions, not accuracy, as what determines whether an SME adopts a tool of this kind. A ranked risk view is also close to free once Pulse Check responses exist, since the predictions are already cached per employee per week (§4.7).
 
 **Validate fairness on an adequate sample.** Subgroup performance should be treated as a deployment precondition. On the evidence available, age and gender should also be dropped from the transfer model outright, since removing them costs nothing.
 
