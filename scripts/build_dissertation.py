@@ -80,6 +80,7 @@ TITLE_PAGE = {
 # figure conservative rather than flattering.
 FRONT_MATTER = [
     'abstract.md',
+    'acknowledgements.md',
 ]
 
 CHAPTERS = [
@@ -89,6 +90,13 @@ CHAPTERS = [
     'ch4_implementation.md',
     'ch5_evaluation.md',
     'ch6_conclusions.md',
+]
+
+# Back matter, rendered after the reference list. Also excluded from the body
+# word count -- appendices are supporting material, not argument, and counting
+# them towards the 10,000 minimum would flatter the figure.
+BACK_MATTER = [
+    'appendices.md',
 ]
 
 
@@ -215,6 +223,51 @@ def add_toc(doc: Document) -> None:
     end.set(qn('w:fldCharType'), 'end')
     for el in (begin, instr, sep, placeholder, end):
         run._r.append(el)
+
+
+# ---------------------------------------------------------------------------
+# Lists of figures and tables
+# ---------------------------------------------------------------------------
+# KIU guidelines section 10.3 requires these as separate preliminary pages.
+# They are generated from the captions in the chapter sources rather than
+# maintained by hand, so renaming a figure cannot leave the list stale.
+#
+# No page numbers: Word computes those from fields, and a field that fails to
+# resolve produces an EMPTY list, which is worse than a correct list without
+# page numbers. Caption text is deterministic; page numbers here would not be.
+FIG_CAPTION = re.compile(r'!\[(.*?)\]\(.+?\)')
+TAB_CAPTION = re.compile(r'\*\*(Table\s+[0-9A-Z]+\.[0-9]+\s+.*?)\*\*')
+
+
+def collect_captions(names: list) -> tuple:
+    """Scan sources in assembly order -> (figure captions, table captions)."""
+    figures, tables = [], []
+    for name in names:
+        path = SRC / name
+        if not path.exists():
+            continue
+        for line in path.read_text(encoding='utf8').splitlines():
+            stripped = line.strip()
+            m = FIG_CAPTION.fullmatch(stripped)
+            if m:
+                figures.append(strip_inline(m.group(1)))
+                continue
+            m = TAB_CAPTION.fullmatch(stripped)
+            if m:
+                tables.append(strip_inline(m.group(1)))
+    return figures, tables
+
+
+def add_caption_list(doc: Document, heading: str, captions: list) -> None:
+    doc.add_heading(heading, level=1)
+    if not captions:
+        doc.add_paragraph('None.')
+        return
+    for caption in captions:
+        p = doc.add_paragraph()
+        p.paragraph_format.left_indent = Inches(0.4)
+        p.paragraph_format.first_line_indent = Inches(-0.4)
+        p.add_run(caption)
 
 
 # ---------------------------------------------------------------------------
@@ -405,6 +458,14 @@ def main() -> None:
     add_toc(doc)
     doc.add_page_break()
 
+    figures, tables = collect_captions(CHAPTERS + BACK_MATTER)
+    add_caption_list(doc, 'List of Figures', figures)
+    doc.add_page_break()
+    add_caption_list(doc, 'List of Tables', tables)
+    doc.add_page_break()
+    print('  ok     %-28s %5d figures, %d tables'
+          % ('lists of figures/tables', len(figures), len(tables)))
+
     found = 0
     for name in CHAPTERS:
         path = SRC / name
@@ -419,6 +480,15 @@ def main() -> None:
     if not found:
         sys.exit('ERROR: no chapter files found in %s' % SRC)
 
+    # Back matter cites too, but is rendered AFTER the reference list. Register
+    # its keys first so those references exist and are numbered in reading
+    # order; substitute() is idempotent, so re-running it during the render
+    # below yields the same numbers.
+    for name in BACK_MATTER:
+        path = SRC / name
+        if path.exists():
+            cites.substitute(path.read_text(encoding='utf8'))
+
     # References, numbered in order of first citation.
     doc.add_page_break()
     doc.add_heading('References', level=1)
@@ -427,6 +497,15 @@ def main() -> None:
         p.paragraph_format.left_indent = Inches(0.4)
         p.paragraph_format.first_line_indent = Inches(-0.4)
         add_runs(p, '[%d] %s' % (idx, refs[key]))
+
+    back = {'words': 0, 'chapters': 1}   # chapters=1 -> page break before it
+    for name in BACK_MATTER:
+        path = SRC / name
+        if not path.exists():
+            print('  skip   %-28s (not drafted yet)' % name)
+            continue
+        render(doc, path.read_text(encoding='utf8'), cites, back)
+        print('  ok     %-28s %5d words (back matter)' % (name, back['words']))
 
     if cites.unresolved:
         print()

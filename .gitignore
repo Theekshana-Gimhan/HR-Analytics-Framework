@@ -34,3 +34,6 @@ created_docs/Final_Report_COM4901_Theekshana_Gimhan.docx
 # screenshots and browser storage state -- the last of which can contain live
 # session tokens for the dev deployment. Never commit.
 .playwright-cli/
+
+# Word/Office lock files (created while a document is open)
+~$*

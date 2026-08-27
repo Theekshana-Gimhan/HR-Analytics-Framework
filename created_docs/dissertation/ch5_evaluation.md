@@ -157,7 +157,7 @@ The transfer model must not be credited with meeting it. On the Sri Lankan sampl
 
 The distinction matters because an automated evaluator reasons about principles against captured evidence but does not *experience* an interface. It cannot report confusion, hesitation or the feeling of not knowing where to begin, and heuristic evaluation was designed around evaluators who can. The single most consequential finding below (F13) came from E1 and could not have come from E2.
 
-**Table 5.7 — Heuristic evaluation findings**
+**Table 5.6 — Heuristic evaluation findings**
 
 | # | Heuristic | Screen | Observation | Sev. |
 |---|---|---|---|---:|
@@ -189,7 +189,7 @@ The distinction matters because an automated evaluator reasons about principles 
 
 Three limitations apply to this substitution regardless of outcome, and none is repaired by the findings above.
 
-Heuristic evaluation is an **inspection method, not a measurement**. It surfaces usability defects but yields no satisfaction score, so it cannot answer the "above 80" target in its own terms. **Objective O5 therefore remains partly undischarged**, and Table 5.7 should not be read as a substitute result.
+Heuristic evaluation is an **inspection method, not a measurement**. It surfaces usability defects but yields no satisfaction score, so it cannot answer the "above 80" target in its own terms. **Objective O5 therefore remains partly undischarged**, and Table 5.6 should not be read as a substitute result.
 
 **Evaluator independence is weak.** Nielsen and Molich recommend three to five evaluators [@nielsen1990], and this inspection had two, of whom the only human is the system's own author. Developer-evaluators systematically under-report problems they have internalised, and no procedure here corrects for that. The second evaluator does not share the author's mental model, which is some mitigation, but it is not independence.
 
@@ -201,7 +201,7 @@ Heuristic evaluation is an **inspection method, not a measurement**. It surfaces
 
 As established in §3.10, project-level billing could not answer this question because the deployment shares a cloud project with four unrelated systems. Cost was therefore measured per resource over a four-month window and priced against published rates, under four scenarios.
 
-**Table 5.6 — Attributed monthly cost against the LKR 10,000 target**
+**Table 5.7 — Attributed monthly cost against the LKR 10,000 target**
 
 | Scenario | USD | LKR | Result |
 |---|---:|---:|:--|
