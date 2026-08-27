@@ -258,7 +258,14 @@ TAB_CAPTION = re.compile(r'\*\*(Table\s+[0-9A-Z]+\.[0-9]+\s+.*?)\*\*')
 
 
 def collect_captions(names: list) -> tuple:
-    """Scan sources in assembly order -> (figure captions, table captions)."""
+    """Scan sources in assembly order -> (figure captions, table captions).
+
+    Citation keys are DROPPED, not resolved. These lists are built before the
+    chapters render, so resolving here would assign IEEE numbers in list order
+    rather than reading order -- and a list of tables has no use for a citation
+    anyway. Without this, a caption like "Table 3.1 -- DSRM model [@peffers2007]"
+    reaches the page with the raw key still in it.
+    """
     figures, tables = [], []
     for name in names:
         path = SRC / name
@@ -268,11 +275,11 @@ def collect_captions(names: list) -> tuple:
             stripped = line.strip()
             m = FIG_CAPTION.fullmatch(stripped)
             if m:
-                figures.append(strip_inline(m.group(1)))
+                figures.append(strip_caption(m.group(1)))
                 continue
             m = TAB_CAPTION.fullmatch(stripped)
             if m:
-                tables.append(strip_inline(m.group(1)))
+                tables.append(strip_caption(m.group(1)))
     return figures, tables
 
 
@@ -309,6 +316,12 @@ def add_runs(par, text: str) -> None:
             par.add_run(piece[1:-1]).italic = True
         else:
             par.add_run(piece)
+
+
+def strip_caption(text: str) -> str:
+    """Caption text for the front-matter lists: no markdown, no citation keys."""
+    text = re.sub(r'\s*\[@[A-Za-z0-9]+\]', '', text)
+    return re.sub(r'\s{2,}', ' ', strip_inline(text)).strip()
 
 
 def strip_inline(text: str) -> str:
@@ -464,6 +477,11 @@ def main() -> None:
     print('=' * 74)
 
     # Front matter first, counted separately so it stays out of the body total.
+    #
+    # No page break inside the loop: render() already breaks before every '#'
+    # heading after the first, and the title page has just broken. Adding one
+    # here as well produced a genuinely blank page between the abstract and the
+    # acknowledgements. One explicit break afterwards carries us to the ToC.
     front = {'words': 0, 'chapters': 0}
     for name in FRONT_MATTER:
         path = SRC / name
@@ -473,8 +491,8 @@ def main() -> None:
         before = front['words']
         render(doc, path.read_text(encoding='utf8'), cites, front)
         print('  ok     %-28s %5d words (front matter)' % (name, front['words'] - before))
-        doc.add_page_break()
 
+    doc.add_page_break()
     doc.add_heading('Table of Contents', level=1)
     add_toc(doc)
     doc.add_page_break()
