@@ -226,6 +226,24 @@ def add_toc(doc: Document) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Figures
+# ---------------------------------------------------------------------------
+MAX_FIG_WIDTH = 6.0    # inches -- the text column
+MIN_DPI = 150          # below this, a printed screenshot looks soft
+
+
+def figure_width(path) -> float:
+    """Widest size that keeps the image at or above MIN_DPI, capped at the column."""
+    try:
+        from PIL import Image
+        with Image.open(str(path)) as im:
+            px = im.width
+    except Exception:
+        return MAX_FIG_WIDTH      # unreadable header: fall back to full width
+    return max(2.5, min(MAX_FIG_WIDTH, px / float(MIN_DPI)))
+
+
+# ---------------------------------------------------------------------------
 # Lists of figures and tables
 # ---------------------------------------------------------------------------
 # KIU guidelines section 10.3 requires these as separate preliminary pages.
@@ -354,7 +372,10 @@ def render(doc: Document, md: str, cites: Citations, counter: dict) -> None:
         if m:
             caption, path = m.group(1), (ROOT / m.group(2))
             if path.exists():
-                doc.add_picture(str(path), width=Inches(6.0))
+                # Never upscale past MIN_DPI. A 6in-wide frame makes a small
+                # screenshot soft in print; better a narrower sharp figure than
+                # a full-width blurry one.
+                doc.add_picture(str(path), width=Inches(figure_width(path)))
                 doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
             else:
                 doc.add_paragraph('[missing figure: %s]' % m.group(2))

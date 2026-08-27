@@ -44,7 +44,7 @@ Fourth, **the reporting of negative and infeasible results** rather than their s
 
 The limitations are set out fully in §5.12 and are summarised here without softening.
 
-The Sri Lankan outcome is turnover **intention**, not observed departure; every claim about the local model is a claim about intention. Predictors and outcome come from a single self-report instrument, so common-method variance inflates the local result by an amount this design cannot quantify. The local figure is a within-sample cross-validated estimate on 230 records with 33 positives, with a wide bootstrap interval of [0.883, 0.982]. The validation sample is drawn from startup professionals rather than the SME population targeted, and the training sources were selected for availability rather than similarity.
+The Sri Lankan outcome is turnover **intention**, not observed departure; every claim about the local model is a claim about intention. Predictors and outcome come from a single self-report instrument, so common-method variance inflates the local result by an amount this design cannot quantify. The local figure is a within-sample cross-validated estimate on 230 records with 33 positives, with a wide bootstrap interval of [0.883, 0.982]. The validation sample is drawn from startup professionals rather than the SME population targeted, and the training sources were selected for availability rather than similarity. The validation sample also contributed to the synthetic-data calibration (§3.5), so it is not untouched by the training pipeline, though the exposure is aggregate-level and works against the transfer arm rather than for it.
 
 Fairness is unvalidated for women and for employees over 25 because the sample cannot support it — two positive cases and six respectively — and gender remains partly recoverable from the deployed model's inputs at 0.655. The system should not be used on real employees without subgroup validation on an adequate sample.
 
@@ -55,6 +55,8 @@ Objective O1 required compliance with the Personal Data Protection Act. What thi
 ## 6.4 Future Work
 
 **Obtain observed attrition data from a partner SME.** This is the single highest-value next step. Behavioural outcome data would dissolve the label-shift confound that limits the transfer comparison and would allow the local model to be evaluated against departures rather than intentions. It is also the least controllable, requiring an organisational partner willing to share outcome records.
+
+**Refit the synthetic calibration on the international sources alone.** The calibration step currently includes the Sri Lankan validation sample (§3.5), which puts an indirect path between the held-out data and the training set. The effect is bounded and favours the arm this work reports as failing, so no conclusion here depends on it — but the pipeline should be corrected before any of these results are built on, and the transfer figures regenerated from a calibration fitted only on the Saudi and Russian sources.
 
 **Validate the Pulse Check short form.** Once roughly fifty real responses exist, the internal consistency of the two-item construct pairs can be assessed, which would either defend the short-form design empirically or justify lengthening it.
 

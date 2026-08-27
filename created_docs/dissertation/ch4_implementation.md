@@ -16,7 +16,7 @@ Access control is layered. Authentication issues short-lived access tokens with 
 
 One rule governs the entire data layer: **every database query filters by the authenticated user's company identifier**. Multi-tenancy is enforced explicitly in each service method rather than implicitly by middleware, on the principle that an isolation rule which is visible at every call site is harder to omit than one applied invisibly somewhere upstream. For a system holding salary and personal data for multiple companies, a cross-tenant leak is the most serious failure available, and the design accepts verbosity as the price of making that failure obvious.
 
-The frontend lazy-loads every route and splits vendor bundles, so an SME on a constrained connection downloads only the screens actually used. Server state is managed through a query cache with revalidation rather than hand-rolled fetching, and dashboard aggregates are served from an in-memory cache keyed by company identifier, with the cache interface written so that it can be replaced by a shared cache without touching call sites.
+The frontend lazy-loads every route and splits vendor bundles, so an SME on a constrained connection downloads only the screens actually used. Server state is managed through a query cache with revalidation rather than hand-rolled fetching, and dashboard aggregates are served from an in-memory cache keyed by company identifier, with the cache interface written so that it can be replaced by a shared cache without touching call sites. Figure 4.1 shows the resulting dashboard.
 
 ![Figure 4.1 — The HR platform dashboard, showing headcount, leave utilisation and attendance aggregates.](created_docs/figures/dashboard.png)
 
@@ -57,9 +57,9 @@ The deployment environment is a shared development project rather than a dedicat
 
 Integration was delivered as a thin proxy in the HR backend. The proxy exposes attrition endpoints under the application's own API, validates request payloads against a schema, and gates access behind a dedicated permission granted to owners automatically and to administrators explicitly. It obtains an identity token for the inference service at call time and forwards the request. When the inference service address is not configured, the feature disables itself cleanly rather than erroring — so the HR platform remains fully functional for a deployment that has not adopted the predictive component at all.
 
-On the frontend, an attrition risk card appears on the employee detail page, presenting the eight construct inputs, the resulting probability against its threshold, the risk band, and the strongest contributing factors from the SHAP output. The card carries a visible caveat stating that the inputs are survey-sourced and that the model predicts turnover *intention* rather than departure.
+On the frontend, an attrition risk card appears on the employee detail page, presenting the eight construct inputs, the resulting probability against its threshold, the risk band, and the strongest contributing factors from the SHAP output. The card carries a visible caveat stating that the inputs are survey-sourced and that the model predicts turnover *intention* rather than departure. Figure 4.2 shows the card after a prediction has been requested.
 
-![Figure 4.2 — Attrition risk card on the employee detail page, showing risk band, probability against threshold, and the leading SHAP contributions.](created_docs/figures/attrition_risk_card.png)
+![Figure 4.2 — Attrition risk card after a prediction, showing the risk band, the probability against its disclosed threshold, and the leading SHAP contributions.](created_docs/figures/attrition_risk_result.png)
 
 The integration was verified end to end against the deployed services with a real authenticated session: the status endpoint reporting the feature enabled, both prediction routes returning coherent probabilities with corresponding SHAP attributions, and malformed input rejected by schema validation.
 
@@ -69,11 +69,11 @@ The local model consumes eight psychometric constructs, and those constructs do 
 
 The Pulse Check is that mechanism: a weekly sixteen-item Likert micro-survey, two items per construct, averaged into the eight constructs using **the same mean-of-items definition applied during training**, which is what preserves train/serve parity. One submission is stored per employee per ISO week, holding the raw answers, the derived constructs and a cached prediction. Scoring is best-effort by design — if the inference service is cold or unavailable, the response is still recorded and the submission never fails.
 
-A full conversational agent was considered for this role and rejected. It would have added a managed service dependency and a recurring cost to capture data that a form in the existing application captures adequately, which would have undermined the cost objective the framework exists to demonstrate.
+A full conversational agent was considered for this role and rejected. It would have added a managed service dependency and a recurring cost to capture data that a form in the existing application captures adequately, which would have undermined the cost objective the framework exists to demonstrate. The survey as presented to employees is shown in Figure 4.3.
 
 ![Figure 4.3 — The weekly Pulse Check survey presented to employees.](created_docs/figures/pulse_check_page.png)
 
-Two design decisions carry ethical weight. First, **employees never see their own risk score**; the survey returns only a confirmation of submission. A tool that reports a personal attrition-risk figure back to the individual invites distress and invites gaming, and serves no intervention purpose. Second, the manager-facing readout is gated behind the same permission as the attrition feature, so pulse-derived risk is not visible to peers.
+Two design decisions carry ethical weight. First, **employees never see their own risk score**; the survey returns only a confirmation of submission. A tool that reports a personal attrition-risk figure back to the individual invites distress and invites gaming, and serves no intervention purpose. Second, the manager-facing readout, shown in Figure 4.4, is gated behind the same permission as the attrition feature, so pulse-derived risk is not visible to peers.
 
 ![Figure 4.4 — Manager-side pulse-derived risk readout on the employee detail page.](created_docs/figures/pulse_risk_card.png)
 

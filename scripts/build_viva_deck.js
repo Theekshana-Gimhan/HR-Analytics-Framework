@@ -272,7 +272,7 @@ const chartFrame = () => ({
   title(s, 'Methodology', 'Design Science Research, six activities mapped to project phases');
   const steps = [
     ['1', 'Problem identification', 'SME cost and data constraints established from the Sri Lankan context'],
-    ['2', 'Define objectives', 'Six measurable objectives, O1 to O6, each with a stated pass criterion'],
+    ['2', 'Define objectives', 'Five objectives, O1 to O5; three carry measurable pass criteria'],
     ['3', 'Design & development', 'HR platform, ML pipeline, inference service and Pulse Check'],
     ['4', 'Demonstration', 'Deployed to Cloud Run and exercised end to end on live infrastructure'],
     ['5', 'Evaluation', 'One script per question, each emitting a machine-readable report'],
